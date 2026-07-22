@@ -6,7 +6,7 @@ const SafeAreaView = styled(RNSafeAreaView);
 
 const Insights = () => {
   return (
-    <SafeAreaView>
+    <SafeAreaView className="flex-1">
       <Text>Insights</Text>
     </SafeAreaView>
   );
