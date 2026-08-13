@@ -12,6 +12,7 @@ import SubscriptionCard from "@/components/SubscriptionCard";
 import UpcomingSubscriptionCard from "@/components/UpcomingSubscriptionCard";
 import { formatCurrency } from "@/lib/utils";
 import dayjs from "dayjs";
+import { useRouter } from "expo-router";
 import { styled } from "nativewind";
 import { useState } from "react";
 import { Image, ScrollView, Text, View } from "react-native";
@@ -20,6 +21,7 @@ import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 const SafeAreaView = styled(RNSafeAreaView);
 
 export default function App() {
+  const router = useRouter();
   const [expandedSubscriptionId, setExpandedSubscriptionId] = useState<
     string | null
   >(null);
@@ -54,7 +56,10 @@ export default function App() {
         </View>
 
         <View>
-          <ListHeading title="Upcoming" />
+          <ListHeading
+            title="Upcoming"
+            onPress={() => router.push("/(tabs)/subscriptions")}
+          />
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             {UPCOMING_SUBSCRIPTIONS.map((subscription) => (
               <UpcomingSubscriptionCard
@@ -63,6 +68,7 @@ export default function App() {
                 name={subscription.name}
                 price={subscription.price}
                 currency={subscription.currency}
+                renewalDate={subscription.renewalDate}
                 daysLeft={subscription.daysLeft}
               />
             ))}
@@ -70,7 +76,10 @@ export default function App() {
         </View>
 
         <View>
-          <ListHeading title="All Subscription" />
+          <ListHeading
+            title="All Subscription"
+            onPress={() => router.push("/(tabs)/subscriptions")}
+          />
           <View className="gap-4">
             {HOME_SUBSCRIPTIONS.map((subscription) => (
               <SubscriptionCard

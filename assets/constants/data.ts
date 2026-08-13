@@ -1,5 +1,31 @@
 import { icons } from "./icons";
 
+const getFutureRenewalDate = (monthIndex: number, day: number) => {
+  const now = new Date();
+  const renewalDate = new Date(
+    now.getFullYear(),
+    monthIndex,
+    day,
+    10,
+    0,
+    0,
+    0,
+  );
+
+  if (renewalDate <= now) {
+    renewalDate.setFullYear(renewalDate.getFullYear() + 1);
+  }
+
+  return renewalDate.toISOString();
+};
+
+const getDaysLeft = (renewalDate?: string) => {
+  if (!renewalDate) return 0;
+
+  const difference = new Date(renewalDate).getTime() - Date.now();
+  return Math.max(0, Math.ceil(difference / 86_400_000));
+};
+
 export const tabs: AppTab[] = [
   { name: "index", title: "Home", icon: icons.home },
   { name: "subscriptions", title: "Subscriptions", icon: icons.wallet },
@@ -13,35 +39,8 @@ export const HOME_USER = {
 
 export const HOME_BALANCE = {
   amount: 2489.48,
-  nextRenewalDate: "2026-03-18T09:00:00.000Z",
+  nextRenewalDate: "",
 };
-
-export const UPCOMING_SUBSCRIPTIONS: UpcomingSubscription[] = [
-  {
-    id: "spotify",
-    icon: icons.spotify,
-    name: "Spotify",
-    price: 5.99,
-    currency: "USD",
-    daysLeft: 2,
-  },
-  {
-    id: "notion",
-    icon: icons.notion,
-    name: "Notion",
-    price: 12.0,
-    currency: "USD",
-    daysLeft: 4,
-  },
-  {
-    id: "figma",
-    icon: icons.figma,
-    name: "Figma",
-    price: 15.0,
-    currency: "USD",
-    daysLeft: 6,
-  },
-];
 
 export const HOME_SUBSCRIPTIONS: Subscription[] = [
   {
@@ -56,7 +55,7 @@ export const HOME_SUBSCRIPTIONS: Subscription[] = [
     price: 77.49,
     currency: "USD",
     billing: "Monthly",
-    renewalDate: "2026-03-20T10:00:00.000Z",
+    renewalDate: getFutureRenewalDate(2, 20),
     color: "#f5c542",
   },
   {
@@ -71,7 +70,7 @@ export const HOME_SUBSCRIPTIONS: Subscription[] = [
     price: 9.99,
     currency: "USD",
     billing: "Monthly",
-    renewalDate: "2026-03-24T10:00:00.000Z",
+    renewalDate: getFutureRenewalDate(2, 24),
     color: "#e8def8",
   },
   {
@@ -86,7 +85,7 @@ export const HOME_SUBSCRIPTIONS: Subscription[] = [
     price: 20.0,
     currency: "USD",
     billing: "Monthly",
-    renewalDate: "2026-03-27T10:00:00.000Z",
+    renewalDate: getFutureRenewalDate(2, 27),
     color: "#b8d4e3",
   },
   {
@@ -101,7 +100,37 @@ export const HOME_SUBSCRIPTIONS: Subscription[] = [
     price: 119.99,
     currency: "USD",
     billing: "Yearly",
-    renewalDate: "2026-04-02T10:00:00.000Z",
+    renewalDate: getFutureRenewalDate(3, 2),
     color: "#b8e8d0",
   },
-];
+].map((subscription) => ({
+  ...subscription,
+  daysLeft: getDaysLeft(subscription.renewalDate),
+}));
+
+export const UPCOMING_SUBSCRIPTIONS: UpcomingSubscription[] = HOME_SUBSCRIPTIONS
+  .filter((subscription) => {
+    if (subscription.status !== "active" || !subscription.renewalDate) {
+      return false;
+    }
+
+    return new Date(subscription.renewalDate).getTime() > Date.now();
+  })
+  .sort(
+    (first, second) =>
+      new Date(first.renewalDate ?? "").getTime() -
+      new Date(second.renewalDate ?? "").getTime(),
+  )
+  .slice(0, 3)
+  .map(({ id, icon, name, price, currency, renewalDate }) => ({
+    id,
+    icon,
+    name,
+    price,
+    currency,
+    renewalDate: renewalDate!,
+    daysLeft: getDaysLeft(renewalDate),
+  }));
+
+HOME_BALANCE.nextRenewalDate =
+  UPCOMING_SUBSCRIPTIONS[0]?.renewalDate ?? new Date().toISOString();

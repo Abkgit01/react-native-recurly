@@ -27,6 +27,7 @@ declare global {
     frequency?: string;
     renewalDate?: string;
     color?: string;
+    daysLeft?: number;
   }
 
   interface SubscriptionCardProps extends Omit<Subscription, "id"> {
@@ -42,6 +43,7 @@ declare global {
     name: string;
     price: number;
     currency?: string;
+    renewalDate: string;
     daysLeft: number;
   }
 
@@ -52,6 +54,7 @@ declare global {
 
   interface ListHeadingProps {
     title: string;
+    onPress?: () => void;
   }
 }
 

@@ -3,11 +3,12 @@ import "@/global.css";
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
+import { Text, View } from "react-native";
 
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     "sans-regular": require("../assets/assets/fonts/PlusJakartaSans-Regular.ttf"),
     "sans-bold": require("../assets/assets/fonts/PlusJakartaSans-Bold.ttf"),
     "sans-medium": require("../assets/assets/fonts/PlusJakartaSans-Medium.ttf"),
@@ -17,10 +18,22 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    if (fontsLoaded) {
+    if (fontsLoaded || fontError) {
       SplashScreen.hideAsync();
     }
-  }, [fontsLoaded]);
+  }, [fontError, fontsLoaded]);
+
+  if (fontError) {
+    console.error("Failed to load app fonts", fontError);
+
+    return (
+      <View className="flex-1 items-center justify-center bg-background p-5">
+        <Text className="text-center text-base font-sans-bold text-primary">
+          Unable to load app fonts.
+        </Text>
+      </View>
+    );
+  }
 
   if (!fontsLoaded) return null;
 
