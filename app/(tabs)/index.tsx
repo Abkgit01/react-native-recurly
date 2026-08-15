@@ -12,7 +12,7 @@ import SubscriptionCard from "@/components/SubscriptionCard";
 import UpcomingSubscriptionCard from "@/components/UpcomingSubscriptionCard";
 import { formatCurrency } from "@/lib/utils";
 import dayjs from "dayjs";
-import { Redirect, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { styled } from "nativewind";
 import { useState } from "react";
 import { Image, Pressable, ScrollView, Text, View } from "react-native";
@@ -22,14 +22,12 @@ const SafeAreaView = styled(RNSafeAreaView);
 
 export default function App() {
   const router = useRouter();
-  const { isLoaded, isSignedIn, signOut } = useAuth();
+  const { signOut } = useAuth();
   const { user } = useUser();
+  const [signOutError, setSignOutError] = useState("");
   const [expandedSubscriptionId, setExpandedSubscriptionId] = useState<
     string | null
   >(null);
-
-  if (!isLoaded) return null;
-  if (!isSignedIn) return <Redirect href="/(auth)/sign-in" />;
 
   const displayName =
     user?.firstName ||
@@ -53,10 +51,22 @@ export default function App() {
             <Text className="home-user-name">{displayName}</Text>
           </View>
 
-          <Pressable onPress={() => signOut()}>
+          <Pressable
+            onPress={async () => {
+              setSignOutError("");
+
+              try {
+                await signOut();
+              } catch (error) {
+                console.error("Sign-out failed:", error);
+                setSignOutError("Unable to sign out. Please try again.");
+              }
+            }}
+          >
             <Text className="auth-link">Sign out</Text>
           </Pressable>
         </View>
+        {signOutError ? <Text className="auth-error">{signOutError}</Text> : null}
 
         <View className="home-balance-card">
           <Text className="home-balance-label">Balance</Text>

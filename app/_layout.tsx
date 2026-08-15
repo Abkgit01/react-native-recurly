@@ -9,12 +9,6 @@ import { Text, View } from "react-native";
 
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? "";
 
-if (!publishableKey) {
-  throw new Error(
-    "Missing EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY. Add your key to .env, then restart the dev server.",
-  );
-}
-
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
@@ -33,25 +27,44 @@ export default function RootLayout() {
     }
   }, [fontError, fontsLoaded]);
 
-  if (fontError) {
-    console.error("Failed to load app fonts", fontError);
+  if (!publishableKey) {
+    if (__DEV__) {
+      console.error("Missing EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY.");
+    }
 
     return (
-      <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
+      <View className="flex-1 items-center justify-center bg-background p-5">
+        <Text className="text-center text-base font-sans-bold text-primary">
+          Missing Clerk publishable key. Add it to .env, then restart the dev
+          server.
+        </Text>
+      </View>
+    );
+  }
+
+  if (fontError) {
+    console.error("Failed to load app fonts", fontError);
+  }
+
+  const content = (() => {
+    if (fontError) {
+      return (
         <View className="flex-1 items-center justify-center bg-background p-5">
           <Text className="text-center text-base font-sans-bold text-primary">
             Unable to load app fonts.
           </Text>
         </View>
-      </ClerkProvider>
-    );
-  }
+      );
+    }
 
-  if (!fontsLoaded) return null;
+    if (!fontsLoaded) return null;
+
+    return <Stack screenOptions={{ headerShown: false }} />;
+  })();
 
   return (
     <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
-      <Stack screenOptions={{ headerShown: false }} />
+      {content}
     </ClerkProvider>
   );
 }

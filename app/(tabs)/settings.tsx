@@ -1,6 +1,5 @@
-import { useAuth, useClerk, useUser } from "@clerk/expo";
+import { useAuth, useUser } from "@clerk/expo";
 import { images } from "@/assets/constants/images";
-import { Redirect } from "expo-router";
 import { styled } from "nativewind";
 import { useState } from "react";
 import { Image, Pressable, Text, View } from "react-native";
@@ -9,13 +8,9 @@ import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 const SafeAreaView = styled(RNSafeAreaView);
 
 const Settings = () => {
-  const { isLoaded, isSignedIn } = useAuth();
-  const { signOut } = useClerk();
+  const { signOut } = useAuth();
   const { user } = useUser();
   const [isSigningOut, setIsSigningOut] = useState(false);
-
-  if (!isLoaded) return null;
-  if (!isSignedIn) return <Redirect href="/(auth)/sign-in" />;
 
   const displayName =
     user?.firstName ||
