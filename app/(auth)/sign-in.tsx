@@ -1,4 +1,4 @@
-import { useClerk, useSignIn } from "@clerk/expo";
+import { useSignIn } from "@clerk/expo";
 import { Link, useRouter } from "expo-router";
 import { styled } from "nativewind";
 import { useState } from "react";
@@ -17,7 +17,6 @@ const SafeAreaView = styled(RNSafeAreaView);
 
 const SignIn = () => {
   const router = useRouter();
-  const { setActive } = useClerk();
   const { fetchStatus, signIn } = useSignIn();
   const [emailAddress, setEmailAddress] = useState("");
   const [password, setPassword] = useState("");
@@ -48,7 +47,6 @@ const SignIn = () => {
 
       if (signIn.status === "complete" && signIn.createdSessionId) {
         await signIn.finalize();
-        await setActive({ session: signIn.createdSessionId });
         router.replace("/(tabs)");
         return;
       }

@@ -12,7 +12,7 @@ import SubscriptionCard from "@/components/SubscriptionCard";
 import UpcomingSubscriptionCard from "@/components/UpcomingSubscriptionCard";
 import { formatCurrency } from "@/lib/utils";
 import dayjs from "dayjs";
-import { Redirect, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { styled } from "nativewind";
 import { useState } from "react";
 import { Image, Pressable, ScrollView, Text, View } from "react-native";
@@ -22,20 +22,31 @@ const SafeAreaView = styled(RNSafeAreaView);
 
 export default function App() {
   const router = useRouter();
-  const { isLoaded, isSignedIn, signOut } = useAuth();
+  const { signOut } = useAuth();
   const { user } = useUser();
   const [expandedSubscriptionId, setExpandedSubscriptionId] = useState<
     string | null
   >(null);
-
-  if (!isLoaded) return null;
-  if (!isSignedIn) return <Redirect href="/(auth)/sign-in" />;
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
   const displayName =
     user?.firstName ||
     user?.fullName ||
     user?.primaryEmailAddress?.emailAddress ||
     HOME_USER.name;
+
+  const handleSignOut = async () => {
+    if (isSigningOut) return;
+
+    setIsSigningOut(true);
+
+    try {
+      await signOut();
+    } catch (error) {
+      console.error("Sign-out failed:", error);
+      setIsSigningOut(false);
+    }
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-background">
@@ -53,8 +64,10 @@ export default function App() {
             <Text className="home-user-name">{displayName}</Text>
           </View>
 
-          <Pressable onPress={() => signOut()}>
-            <Text className="auth-link">Sign out</Text>
+          <Pressable onPress={handleSignOut} disabled={isSigningOut}>
+            <Text className="auth-link">
+              {isSigningOut ? "Signing out..." : "Sign out"}
+            </Text>
           </Pressable>
         </View>
 
@@ -100,10 +113,23 @@ export default function App() {
             {HOME_SUBSCRIPTIONS.map((subscription) => (
               <SubscriptionCard
                 key={subscription.id}
-                {...subscription}
+                icon={subscription.icon}
+                name={subscription.name}
+                plan={subscription.plan}
+                category={subscription.category}
+                paymentMethod={subscription.paymentMethod}
+                status={subscription.status}
+                startDate={subscription.startDate}
+                price={subscription.price}
+                currency={subscription.currency}
+                billing={subscription.billing}
+                frequency={subscription.frequency}
+                renewalDate={subscription.renewalDate}
+                color={subscription.color}
+                daysLeft={subscription.daysLeft}
                 expanded={expandedSubscriptionId === subscription.id}
                 onPress={() =>
-                  setExpandedSubscriptionId((currentId) =>
+                  setExpandedSubscriptionId((currentId: string | null) =>
                     currentId === subscription.id ? null : subscription.id,
                   )
                 }

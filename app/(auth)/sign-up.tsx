@@ -1,4 +1,4 @@
-import { useClerk, useSignUp } from "@clerk/expo";
+import { useSignUp } from "@clerk/expo";
 import { Link, useRouter } from "expo-router";
 import { styled } from "nativewind";
 import { useState } from "react";
@@ -17,7 +17,6 @@ const SafeAreaView = styled(RNSafeAreaView);
 
 const SignUp = () => {
   const router = useRouter();
-  const { setActive } = useClerk();
   const { fetchStatus, signUp } = useSignUp();
   const [emailAddress, setEmailAddress] = useState("");
   const [password, setPassword] = useState("");
@@ -86,7 +85,6 @@ const SignUp = () => {
 
       if (signUp.status === "complete" && signUp.createdSessionId) {
         await signUp.finalize();
-        await setActive({ session: signUp.createdSessionId });
         router.replace("/(tabs)");
         return;
       }
@@ -188,6 +186,8 @@ const SignUp = () => {
               {errorMessage ? (
                 <Text className="auth-error">{errorMessage}</Text>
               ) : null}
+
+              <View nativeID="clerk-captcha" />
 
               <Pressable
                 className={`auth-button ${
