@@ -79,7 +79,7 @@ export default function RootLayout() {
   const appContent = postHogApiKey ? (
     <PostHogProvider
       apiKey={postHogApiKey}
-      options={{ host: postHogHost }}
+      options={{ host: postHogHost, captureAppLifecycleEvents: false }}
       autocapture={{ captureScreens: false }}
     >
       <PostHogAppEvents>{content}</PostHogAppEvents>

@@ -12,11 +12,17 @@ import { formatCurrency } from "@/lib/utils";
 import dayjs from "dayjs";
 import { useRouter } from "expo-router";
 import { styled } from "nativewind";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FlatList, Image, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 
 const SafeAreaView = styled(RNSafeAreaView);
+
+const getDaysLeft = (renewalDate: string, currentTime: number) => {
+  const difference = new Date(renewalDate).getTime() - currentTime;
+
+  return Math.max(0, Math.ceil(difference / 86_400_000));
+};
 
 export default function App() {
   const router = useRouter();
@@ -25,9 +31,16 @@ export default function App() {
   const [signOutError, setSignOutError] = useState("");
   const subscriptions = useSubscriptionStore();
   const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
+  const [currentTime, setCurrentTime] = useState(() => Date.now());
   const [expandedSubscriptionId, setExpandedSubscriptionId] = useState<
     string | null
   >(null);
+
+  useEffect(() => {
+    const intervalId = setInterval(() => setCurrentTime(Date.now()), 60_000);
+
+    return () => clearInterval(intervalId);
+  }, []);
 
   const displayName =
     user?.firstName ||
@@ -42,7 +55,7 @@ export default function App() {
           (subscription) =>
             subscription.status === "active" &&
             subscription.renewalDate &&
-            new Date(subscription.renewalDate).getTime() > Date.now(),
+            new Date(subscription.renewalDate).getTime() > currentTime,
         )
         .sort(
           (first, second) =>
@@ -50,7 +63,7 @@ export default function App() {
             new Date(second.renewalDate ?? "").getTime(),
         )
         .slice(0, 5),
-    [subscriptions],
+    [currentTime, subscriptions],
   );
   const nextRenewalDate =
     upcomingSubscriptions[0]?.renewalDate ?? HOME_BALANCE.nextRenewalDate;
@@ -130,7 +143,10 @@ export default function App() {
                     price={subscription.price}
                     currency={subscription.currency}
                     renewalDate={subscription.renewalDate!}
-                    daysLeft={subscription.daysLeft ?? 0}
+                    daysLeft={getDaysLeft(
+                      subscription.renewalDate!,
+                      currentTime,
+                    )}
                   />
                 ))}
               </ScrollView>

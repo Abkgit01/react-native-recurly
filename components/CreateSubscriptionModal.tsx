@@ -110,7 +110,6 @@ const CreateSubscriptionModal = ({
       frequency,
       renewalDate: renewalDate.toISOString(),
       color: CATEGORY_COLORS[category],
-      daysLeft: renewalDate.diff(startDate, "day"),
     });
 
     resetForm();
@@ -249,6 +248,7 @@ const CreateSubscriptionModal = ({
                     "auth-button",
                     !canSubmit && "auth-button-disabled",
                   )}
+                  disabled={!canSubmit}
                   onPress={(event) => {
                     event.stopPropagation();
                     handleSubmit();
