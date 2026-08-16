@@ -1,4 +1,7 @@
-import { useSubscriptionStore } from "@/lib/subscriptionStore";
+import {
+  REPORTING_CURRENCY,
+  useSubscriptionStore,
+} from "@/lib/subscriptionStore";
 import { formatCurrency } from "@/lib/utils";
 import { clsx } from "clsx";
 import dayjs from "dayjs";
@@ -9,7 +12,9 @@ import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 
 const SafeAreaView = styled(RNSafeAreaView);
 
-const getMonthlyCost = (subscription: Subscription) => {
+const getMonthlyCost = (subscription: Subscription, currency: string) => {
+  if (subscription.currency !== currency) return 0;
+
   const price = Number(subscription.price);
   const safePrice = Number.isFinite(price) ? price : 0;
   const billing = `${subscription.frequency ?? subscription.billing}`.toLowerCase();
@@ -28,11 +33,16 @@ const Insights = () => {
   const subscriptions = useSubscriptionStore();
 
   const insights = useMemo(() => {
+    const currentTime = Date.now();
+    const reportingCurrency = REPORTING_CURRENCY;
     const activeSubscriptions = subscriptions.filter(
-      (subscription) => subscription.status === "active",
+      (subscription) =>
+        subscription.status === "active" &&
+        subscription.currency === reportingCurrency,
     );
     const monthlySpend = activeSubscriptions.reduce(
-      (total, subscription) => total + getMonthlyCost(subscription),
+      (total, subscription) =>
+        total + getMonthlyCost(subscription, reportingCurrency),
       0,
     );
     const annualSpend = monthlySpend * 12;
@@ -47,7 +57,9 @@ const Insights = () => {
     const categoryTotals = activeSubscriptions.reduce<Record<string, number>>(
       (totals, subscription) => {
         const category = subscription.category?.trim() || "Other";
-        totals[category] = (totals[category] ?? 0) + getMonthlyCost(subscription);
+        totals[category] =
+          (totals[category] ?? 0) +
+          getMonthlyCost(subscription, reportingCurrency);
         return totals;
       },
       {},
@@ -60,14 +72,23 @@ const Insights = () => {
       }))
       .sort((first, second) => second.total - first.total);
     const upcomingRenewals = activeSubscriptions
-      .filter((subscription) => subscription.renewalDate)
+      .filter((subscription) => {
+        if (!subscription.renewalDate) return false;
+
+        const renewalTime = dayjs(subscription.renewalDate).valueOf();
+        return Number.isFinite(renewalTime) && renewalTime > currentTime;
+      })
       .sort(
         (first, second) =>
           dayjs(first.renewalDate).valueOf() - dayjs(second.renewalDate).valueOf(),
       )
       .slice(0, 4);
     const topSubscriptions = [...activeSubscriptions]
-      .sort((first, second) => getMonthlyCost(second) - getMonthlyCost(first))
+      .sort(
+        (first, second) =>
+          getMonthlyCost(second, reportingCurrency) -
+          getMonthlyCost(first, reportingCurrency),
+      )
       .slice(0, 3);
     const monthlyCount = activeSubscriptions.filter((subscription) =>
       `${subscription.frequency ?? subscription.billing}`.toLowerCase().includes(
@@ -86,6 +107,7 @@ const Insights = () => {
       categoryBreakdown,
       monthlyCount,
       monthlySpend,
+      reportingCurrency,
       statusCounts,
       topSubscriptions,
       upcomingRenewals,
@@ -110,13 +132,16 @@ const Insights = () => {
         <View className="insights-hero">
           <Text className="insights-hero-label">Monthly spend</Text>
           <Text className="insights-hero-value">
-            {formatCurrency(insights.monthlySpend)}
+            {formatCurrency(insights.monthlySpend, insights.reportingCurrency)}
           </Text>
           <View className="insights-hero-row">
             <View>
               <Text className="insights-hero-meta">Annualized</Text>
               <Text className="insights-hero-stat">
-                {formatCurrency(insights.annualSpend)}
+                {formatCurrency(
+                  insights.annualSpend,
+                  insights.reportingCurrency,
+                )}
               </Text>
             </View>
             <View className="items-end">
@@ -149,14 +174,16 @@ const Insights = () => {
                     {item.category}
                   </Text>
                   <Text className="insights-row-value">
-                    {formatCurrency(item.total)}
+                    {formatCurrency(item.total, insights.reportingCurrency)}
                   </Text>
                 </View>
                 <View className="insights-bar-track">
-                  <View
-                    className="insights-bar-fill"
-                    style={{ width: `${Math.max(6, item.percentage)}%` }}
-                  />
+                  {item.percentage > 0 ? (
+                    <View
+                      className="insights-bar-fill"
+                      style={{ width: `${Math.max(6, item.percentage)}%` }}
+                    />
+                  ) : null}
                 </View>
               </View>
             ))}
@@ -201,7 +228,10 @@ const Insights = () => {
                   </Text>
                 </View>
                 <Text className="insights-row-value">
-                  {formatCurrency(subscription.price, subscription.currency)}
+                  {formatCurrency(
+                    subscription.price,
+                    insights.reportingCurrency,
+                  )}
                 </Text>
               </View>
             ))}
@@ -228,7 +258,10 @@ const Insights = () => {
                     subscription.status !== "active" && "text-muted-foreground",
                   )}
                 >
-                  {formatCurrency(getMonthlyCost(subscription))}
+                  {formatCurrency(
+                    getMonthlyCost(subscription, insights.reportingCurrency),
+                    insights.reportingCurrency,
+                  )}
                 </Text>
               </View>
             ))}
