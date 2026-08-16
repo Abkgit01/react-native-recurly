@@ -59,6 +59,36 @@ export const HOME_SUBSCRIPTIONS: Subscription[] = [
     color: "#f5c542",
   },
   {
+    id: "spotify-premium",
+    icon: icons.spotify,
+    name: "Spotify Premium",
+    plan: "Individual",
+    category: "Music",
+    paymentMethod: "Visa ending in 4982",
+    status: "active",
+    startDate: "2025-08-28T10:00:00.000Z",
+    price: 5.99,
+    currency: "USD",
+    billing: "Monthly",
+    renewalDate: getFutureRenewalDate(7, 28),
+    color: "#b8e8d0",
+  },
+  {
+    id: "notion-plus",
+    icon: icons.notion,
+    name: "Notion Plus",
+    plan: "Workspace",
+    category: "Productivity",
+    paymentMethod: "Mastercard ending in 6402",
+    status: "active",
+    startDate: "2025-09-05T10:00:00.000Z",
+    price: 12.0,
+    currency: "USD",
+    billing: "Monthly",
+    renewalDate: getFutureRenewalDate(8, 5),
+    color: "#e8def8",
+  },
+  {
     id: "github-pro",
     icon: icons.github,
     name: "GitHub Pro",
@@ -121,7 +151,7 @@ export const UPCOMING_SUBSCRIPTIONS: UpcomingSubscription[] = HOME_SUBSCRIPTIONS
       new Date(first.renewalDate ?? "").getTime() -
       new Date(second.renewalDate ?? "").getTime(),
   )
-  .slice(0, 3)
+  .slice(0, 5)
   .map(({ id, icon, name, price, currency, renewalDate }) => ({
     id,
     icon,

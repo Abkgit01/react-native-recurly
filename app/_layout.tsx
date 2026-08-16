@@ -4,12 +4,26 @@ import "@/global.css";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect } from "react";
+import { PostHogProvider, usePostHog } from "posthog-react-native";
+import { useEffect, type ReactNode } from "react";
 import { Text, View } from "react-native";
 
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? "";
+const postHogApiKey = process.env.EXPO_PUBLIC_POSTHOG_API_KEY ?? "";
+const postHogHost =
+  process.env.EXPO_PUBLIC_POSTHOG_HOST ?? "https://us.i.posthog.com";
 
 SplashScreen.preventAutoHideAsync();
+
+const PostHogAppEvents = ({ children }: { children: ReactNode }) => {
+  const posthog = usePostHog();
+
+  useEffect(() => {
+    posthog.capture("app_opened");
+  }, [posthog]);
+
+  return children;
+};
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
@@ -62,9 +76,21 @@ export default function RootLayout() {
     return <Stack screenOptions={{ headerShown: false }} />;
   })();
 
+  const appContent = postHogApiKey ? (
+    <PostHogProvider
+      apiKey={postHogApiKey}
+      options={{ host: postHogHost }}
+      autocapture={{ captureScreens: false }}
+    >
+      <PostHogAppEvents>{content}</PostHogAppEvents>
+    </PostHogProvider>
+  ) : (
+    content
+  );
+
   return (
     <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
-      {content}
+      {appContent}
     </ClerkProvider>
   );
 }
