@@ -4,7 +4,14 @@ import { useSyncExternalStore } from "react";
 
 type Listener = () => void;
 
-let subscriptions = HOME_SUBSCRIPTIONS;
+export const REPORTING_CURRENCY = "USD";
+
+const normalizeSubscription = (subscription: Subscription): Subscription => ({
+  ...subscription,
+  currency: REPORTING_CURRENCY,
+});
+
+let subscriptions = HOME_SUBSCRIPTIONS.map(normalizeSubscription);
 const listeners = new Set<Listener>();
 
 const emitChange = () => {
@@ -24,12 +31,12 @@ export const useSubscriptionStore = () =>
   useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 
 export const addSubscription = (subscription: Subscription) => {
-  subscriptions = [subscription, ...subscriptions];
+  subscriptions = [normalizeSubscription(subscription), ...subscriptions];
   emitChange();
 };
 
 export const setSubscriptions = (nextSubscriptions: Subscription[]) => {
-  subscriptions = nextSubscriptions;
+  subscriptions = nextSubscriptions.map(normalizeSubscription);
   emitChange();
 };
 
