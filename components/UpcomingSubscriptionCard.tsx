@@ -12,15 +12,23 @@ const UpcomingSubscriptionCard = ({
     <View className="upcoming-card">
       <View className="upcoming-row">
         <Image source={icon} className="upcoming-icon" />
-        <View>
-          <Text className="upcoming-price">
+        <View className="upcoming-copy">
+          <Text
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            className="upcoming-price"
+          >
             {formatCurrency(price, currency)}
           </Text>
-          <Text className="upcoming-meta">{daysLeft} days left</Text>
+          <Text numberOfLines={1} className="upcoming-meta">
+            {daysLeft} days left
+          </Text>
         </View>
       </View>
 
-      <Text className="upcoming-name">{name}</Text>
+      <Text numberOfLines={2} ellipsizeMode="tail" className="upcoming-name">
+        {name}
+      </Text>
     </View>
   );
 };
