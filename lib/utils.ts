@@ -1,31 +1,26 @@
-export function formatCurrency(
-  value: number | string,
-  currency = "USD",
-): string {
-  const amount = Number(value);
-  const normalizedAmount = Number.isFinite(amount) ? amount : 0;
-
-  try {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(normalizedAmount);
-  } catch {
-    return `$${normalizedAmount.toFixed(2)}`;
-  }
-}
-
-export function formatSubscriptionDate(value?: string): string {
-  if (!value) return "Not provided";
+export function formatDateTime(value?: string): string {
+  if (!value) return "Not available";
 
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Not provided";
+  if (Number.isNaN(date.getTime())) return "Not available";
 
   return new Intl.DateTimeFormat("en-US", {
-    month: "2-digit",
-    day: "2-digit",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
+}
+
+export function formatDate(value?: string): string {
+  if (!value) return "Not available";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Not available";
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
     year: "numeric",
   }).format(date);
 }
@@ -33,5 +28,12 @@ export function formatSubscriptionDate(value?: string): string {
 export function formatStatusLabel(value?: string): string {
   if (!value) return "Unknown";
 
-  return value.charAt(0).toUpperCase() + value.slice(1);
+  return value
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+export function sumPartyScores(scores: PartyScore[]): number {
+  return scores.reduce((total, item) => total + (Number(item.score) || 0), 0);
 }

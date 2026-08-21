@@ -1,166 +1,134 @@
 import { icons } from "./icons";
 
-const getFutureRenewalDate = (monthIndex: number, day: number) => {
-  const now = new Date();
-  const renewalDate = new Date(
-    now.getFullYear(),
-    monthIndex,
-    day,
-    10,
-    0,
-    0,
-    0,
-  );
-
-  if (renewalDate <= now) {
-    renewalDate.setFullYear(renewalDate.getFullYear() + 1);
-  }
-
-  return renewalDate.toISOString();
-};
-
-const getDaysLeft = (renewalDate?: string) => {
-  if (!renewalDate) return 0;
-
-  const difference = new Date(renewalDate).getTime() - Date.now();
-  return Math.max(0, Math.ceil(difference / 86_400_000));
-};
-
 export const tabs: AppTab[] = [
   { name: "index", title: "Home", icon: icons.home },
-  { name: "subscriptions", title: "Subscriptions", icon: icons.wallet },
-  { name: "insights", title: "Insights", icon: icons.activity },
-  { name: "settings", title: "Settings", icon: icons.setting },
+  { name: "capture", title: "Capture", icon: icons.add },
+  { name: "results", title: "Results", icon: icons.activity },
+  { name: "sync", title: "Sync", icon: icons.wallet },
+  { name: "profile", title: "Profile", icon: icons.setting },
 ];
 
-export const HOME_USER = {
-  name: "Adrian | JS Mastery",
+export const currentAgent: AgentProfile = {
+  id: "agent-test",
+  name: "Agent Test",
+  role: "Field Agent",
+  phone: "08133811722",
+  email: "agent.test@electionwatch.ng",
+  initials: "AT",
+  kycStatus: "verified",
+  deviceStatus: "registered",
 };
 
-export const HOME_BALANCE = {
-  amount: 2489.48,
-  nextRenewalDate: "",
+export const parties: PoliticalParty[] = [
+  { id: "apc", abbreviation: "APC", name: "All Progressives Congress", color: "#1f77b4" },
+  { id: "lp", abbreviation: "LP", name: "Labour Party", color: "#f59e0b" },
+  { id: "pdp", abbreviation: "PDP", name: "Peoples Democratic Party", color: "#16a34a" },
+  { id: "nnpp", abbreviation: "NNPP", name: "New Nigeria Peoples Party", color: "#111827" },
+  { id: "adp", abbreviation: "ADP", name: "Action Democratic Party", color: "#2563eb" },
+];
+
+export const currentElection: Election = {
+  id: "lagos-lg-2026",
+  name: "Lagos LG Polls 2026",
+  code: "LG-LAG-2026",
+  date: "2026-08-14T07:00:00.000Z",
+  status: "active",
 };
 
-export const HOME_SUBSCRIPTIONS: Subscription[] = [
-  {
-    id: "adobe-creative-cloud",
-    icon: icons.adobe,
-    name: "Adobe Creative Cloud",
-    plan: "Teams Plan",
-    category: "Design",
-    paymentMethod: "Visa ending in 8530",
-    status: "active",
-    startDate: "2025-03-20T10:00:00.000Z",
-    price: 77.49,
-    currency: "USD",
-    billing: "Monthly",
-    renewalDate: getFutureRenewalDate(2, 20),
-    color: "#f5c542",
-  },
-  {
-    id: "spotify-premium",
-    icon: icons.spotify,
-    name: "Spotify Premium",
-    plan: "Individual",
-    category: "Music",
-    paymentMethod: "Visa ending in 4982",
-    status: "active",
-    startDate: "2025-08-28T10:00:00.000Z",
-    price: 5.99,
-    currency: "USD",
-    billing: "Monthly",
-    renewalDate: getFutureRenewalDate(7, 28),
-    color: "#b8e8d0",
-  },
-  {
-    id: "notion-plus",
-    icon: icons.notion,
-    name: "Notion Plus",
-    plan: "Workspace",
-    category: "Productivity",
-    paymentMethod: "Mastercard ending in 6402",
-    status: "active",
-    startDate: "2025-09-05T10:00:00.000Z",
-    price: 12.0,
-    currency: "USD",
-    billing: "Monthly",
-    renewalDate: getFutureRenewalDate(8, 5),
-    color: "#e8def8",
-  },
-  {
-    id: "github-pro",
-    icon: icons.github,
-    name: "GitHub Pro",
-    plan: "Developer",
-    category: "Developer Tools",
-    paymentMethod: "Mastercard ending in 2408",
-    status: "active",
-    startDate: "2024-11-24T10:00:00.000Z",
-    price: 9.99,
-    currency: "USD",
-    billing: "Monthly",
-    renewalDate: getFutureRenewalDate(2, 24),
-    color: "#e8def8",
-  },
-  {
-    id: "claude-pro",
-    icon: icons.claude,
-    name: "Claude Pro",
-    plan: "Pro Plan",
-    category: "AI Tools",
-    paymentMethod: "Amex ending in 1010",
-    status: "paused",
-    startDate: "2025-06-27T10:00:00.000Z",
-    price: 20.0,
-    currency: "USD",
-    billing: "Monthly",
-    renewalDate: getFutureRenewalDate(2, 27),
-    color: "#b8d4e3",
-  },
-  {
-    id: "canva-pro",
-    icon: icons.canva,
-    name: "Canva Pro",
-    plan: "Yearly Access",
-    category: "Design",
-    paymentMethod: "Visa ending in 7784",
-    status: "cancelled",
-    startDate: "2024-04-02T10:00:00.000Z",
-    price: 119.99,
-    currency: "USD",
-    billing: "Yearly",
-    renewalDate: getFutureRenewalDate(3, 2),
-    color: "#b8e8d0",
-  },
-].map((subscription) => ({
-  ...subscription,
-  daysLeft: getDaysLeft(subscription.renewalDate),
-}));
+export const assignedPollingUnit: PollingUnit = {
+  id: "pu-023",
+  code: "PU 023",
+  name: "PU 023, Ward 07",
+  state: "Lagos",
+  lga: "Ikeja",
+  ward: "Ward 07",
+  reportedStatus: "reported",
+};
 
-export const UPCOMING_SUBSCRIPTIONS: UpcomingSubscription[] = HOME_SUBSCRIPTIONS
-  .filter((subscription) => {
-    if (subscription.status !== "active" || !subscription.renewalDate) {
-      return false;
-    }
+export const electionPackage: ElectionPackage = {
+  id: "pkg-lagos-lg-2026-pu-023",
+  election: currentElection,
+  pollingUnit: assignedPollingUnit,
+  parties,
+  version: "2.4 MB",
+  status: "downloaded",
+  captureWindow: "7:00 AM - 6:00 PM",
+  lastDownloadedAt: "2026-08-14T08:45:00.000Z",
+  offlineReady: true,
+};
 
-    return new Date(subscription.renewalDate).getTime() > Date.now();
-  })
-  .sort(
-    (first, second) =>
-      new Date(first.renewalDate ?? "").getTime() -
-      new Date(second.renewalDate ?? "").getTime(),
-  )
-  .slice(0, 5)
-  .map(({ id, icon, name, price, currency, renewalDate }) => ({
-    id,
-    icon,
-    name,
-    price,
-    currency,
-    renewalDate: renewalDate!,
-    daysLeft: getDaysLeft(renewalDate),
-  }));
+export const publicResults: PublicResultsSummary = {
+  activeElection: currentElection,
+  nationalProgress: 23,
+  pollingUnitsReported: 7234,
+  pollingUnitsTotal: 31000,
+  statesReported: "32/36",
+  lgasReported: "412/774",
+  leadingParties: [
+    { party: parties[0], votes: 12940, percentage: 41.2 },
+    { party: parties[1], votes: 8380, percentage: 26.7 },
+    { party: parties[2], votes: 5760, percentage: 18.3 },
+  ],
+  recentUploads: [
+    { id: "recent-1", pollingUnit: "PU 023, Ward 07", location: "Ikeja LGA, Lagos", time: "11:23 AM" },
+    { id: "recent-2", pollingUnit: "PU 022, Ward 07", location: "Ikeja LGA, Lagos", time: "11:01 AM" },
+  ],
+};
 
-HOME_BALANCE.nextRenewalDate =
-  UPCOMING_SUBSCRIPTIONS[0]?.renewalDate ?? new Date().toISOString();
+export const mockPollingUnits: PollingUnit[] = [
+  assignedPollingUnit,
+  { id: "pu-024", code: "PU 024", name: "PU 024, Ward 07", state: "Lagos", lga: "Ikeja", ward: "Ward 07", reportedStatus: "under-review" },
+  { id: "pu-025", code: "PU 025", name: "PU 025, Ward 07", state: "Lagos", lga: "Ikeja", ward: "Ward 07", reportedStatus: "not-reported" },
+];
+
+export const adminMetrics: AdminMetric[] = [
+  { label: "Pending KYC", value: 24 },
+  { label: "Result Reviews", value: 18 },
+  { label: "Failed Syncs", value: 5 },
+  { label: "Open Elections", value: 3 },
+];
+
+export const kycQueue: KYCSubmission[] = [
+  {
+    id: "kyc-1",
+    agentName: "Agent Test",
+    pollingUnit: assignedPollingUnit.name,
+    status: "issues",
+    confidence: 66,
+    submittedAt: "2026-08-14T10:45:00.000Z",
+  },
+  {
+    id: "kyc-2",
+    agentName: "Mariam Okafor",
+    pollingUnit: "PU 014, Ward 02",
+    status: "clean",
+    confidence: 94,
+    submittedAt: "2026-08-14T09:28:00.000Z",
+  },
+];
+
+export const resultReviewQueue: ResultReview[] = [
+  {
+    id: "review-1",
+    election: currentElection.name,
+    pollingUnit: assignedPollingUnit.name,
+    agentName: "Agent Test",
+    reason: "Vote total mismatch",
+    submittedAt: "2026-08-14T11:12:00.000Z",
+    status: "pending",
+  },
+  {
+    id: "review-2",
+    election: currentElection.name,
+    pollingUnit: "PU 024, Ward 07",
+    agentName: "Mariam Okafor",
+    reason: "Low image confidence",
+    submittedAt: "2026-08-14T10:54:00.000Z",
+    status: "pending",
+  },
+];
+
+export const incidents: Incident[] = [
+  { id: "inc-1", type: "Late opening", location: "Ikeja, Ward 07", time: "8:21 AM", status: "open" },
+  { id: "inc-2", type: "Network outage", location: "Surulere, Ward 03", time: "9:44 AM", status: "monitoring" },
+];

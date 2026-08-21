@@ -5,17 +5,21 @@
 @import "nativewind/theme";
 
 @theme {
-  --color-background: #fff9e3;
-  --color-foreground: #081126;
-  --color-card: #fff8e7;
-  --color-muted: #f6eecf;
-  --color-muted-foreground: rgba(0, 0, 0, 0.6);
-  --color-primary: #081126;
-  --color-accent: #ea7a53;
-  --color-border: rgba(0, 0, 0, 0.1);
-  --color-success: #16a34a;
+  --color-background: #f7f3e6;
+  --color-foreground: #121212;
+  --color-card: #fffdf7;
+  --color-muted: #ece6d8;
+  --color-muted-foreground: rgba(18, 18, 18, 0.62);
+  --color-primary: #0a3f2e;
+  --color-accent: #0e6a4f;
+  --color-border: rgba(10, 63, 46, 0.14);
+  --color-success: #0f8a58;
+  --color-warning: #e59819;
   --color-destructive: #dc2626;
-  --color-subscription: #8fd1bd;
+  --color-syncing: #1f73d8;
+  --color-offline: #5f6368;
+  --color-charcoal: #121212;
+  --color-gold: #c99a2e;
 
   --spacing-0: 0px;
   --spacing-1: 4px;
@@ -47,331 +51,19 @@
 
 @layer components {
   .tabs-icon {
-    @apply size-12 items-center justify-center;
+    @apply min-w-14 items-center justify-center;
   }
 
   .tabs-pill {
-    @apply size-12 items-center justify-center rounded-full bg-transparent;
+    @apply h-11 min-w-11 items-center justify-center rounded-full bg-transparent px-3;
   }
 
   .tabs-active {
-    @apply bg-accent;
+    @apply bg-white/15;
   }
 
   .tabs-glyph {
-    @apply size-6;
-  }
-
-  .home-header {
-    @apply mb-2.5 flex-row items-center justify-between gap-3;
-  }
-
-  .home-user {
-    @apply min-w-0 flex-1 flex-row items-center;
-  }
-
-  .home-avatar {
-    @apply size-16 rounded-full;
-  }
-
-  .home-user-name {
-    @apply ml-4 min-w-0 flex-1 text-2xl font-sans-bold text-primary;
-  }
-
-  .home-add-icon {
-    @apply size-12;
-  }
-
-  .home-balance-card {
-    @apply my-2.5 min-h-50 justify-between gap-5 rounded-bl-4xl rounded-tr-4xl bg-accent p-6;
-  }
-
-  .home-balance-label {
-    @apply text-xl font-sans-semibold text-white/80;
-  }
-
-  .home-balance-row {
-    @apply flex-row items-center justify-between;
-  }
-
-  .home-balance-amount {
-    @apply text-4xl font-sans-extrabold text-white;
-  }
-
-  .home-balance-date {
-    @apply shrink-0 text-right text-xl font-sans-medium text-white;
-  }
-
-  .list-head {
-    @apply my-5 flex-row items-center justify-between;
-  }
-
-  .list-title {
-    @apply text-2xl font-sans-bold text-primary;
-  }
-
-  .list-action {
-    @apply rounded-full border border-black/20 px-4 py-1;
-  }
-
-  .list-action-text {
-    @apply text-lg font-sans-semibold text-primary;
-  }
-
-  .upcoming-card {
-    @apply mr-4 w-44 rounded-2xl border border-black/10 bg-background p-4;
-  }
-
-  .upcoming-row {
-    @apply flex-row items-center gap-3;
-  }
-
-  .upcoming-icon {
-    @apply size-14 shrink-0;
-  }
-
-  .upcoming-copy {
-    @apply min-w-0 flex-1;
-  }
-
-  .upcoming-price {
-    @apply min-w-0 text-lg font-sans-bold text-primary;
-  }
-
-  .upcoming-meta {
-    @apply min-w-0 text-sm font-sans-semibold text-muted-foreground;
-  }
-
-  .upcoming-name {
-    @apply mt-2 min-h-14 text-lg font-sans-bold text-primary;
-  }
-
-  .subscription-screen {
-    @apply flex-1 bg-background;
-  }
-
-  .subscription-title {
-    @apply text-3xl font-sans-bold text-primary;
-  }
-
-  .subscription-summary {
-    @apply mt-1 text-sm font-sans-semibold text-muted-foreground;
-  }
-
-  .subscription-search {
-    @apply rounded-2xl border border-border bg-card px-4 py-3;
-  }
-
-  .subscription-search-input {
-    @apply text-base font-sans-medium text-primary;
-  }
-
-  .subscription-empty {
-    @apply py-8 text-center text-sm font-sans-medium text-muted-foreground;
-  }
-
-  .insights-screen {
-    @apply flex-1 bg-background;
-  }
-
-  .insights-title {
-    @apply text-3xl font-sans-bold text-primary;
-  }
-
-  .insights-subtitle {
-    @apply mt-1 text-sm font-sans-semibold text-muted-foreground;
-  }
-
-  .insights-hero {
-    @apply rounded-bl-4xl rounded-tr-4xl bg-primary p-6;
-  }
-
-  .insights-hero-label {
-    @apply text-sm font-sans-semibold uppercase tracking-[1px] text-white/65;
-  }
-
-  .insights-hero-value {
-    @apply mt-3 text-5xl font-sans-extrabold text-background;
-  }
-
-  .insights-hero-row {
-    @apply mt-7 flex-row items-end justify-between border-t border-white/15 pt-5;
-  }
-
-  .insights-hero-meta {
-    @apply text-xs font-sans-semibold uppercase tracking-[1px] text-white/55;
-  }
-
-  .insights-hero-stat {
-    @apply mt-1 text-lg font-sans-bold text-background;
-  }
-
-  .insights-stat-grid {
-    @apply flex-row gap-3;
-  }
-
-  .insights-stat-card {
-    @apply flex-1 rounded-2xl border border-border bg-card p-4;
-  }
-
-  .insights-stat-value {
-    @apply text-3xl font-sans-extrabold text-primary;
-  }
-
-  .insights-stat-label {
-    @apply mt-1 text-xs font-sans-semibold uppercase tracking-[1px] text-muted-foreground;
-  }
-
-  .insights-card {
-    @apply rounded-3xl border border-border bg-card p-5;
-  }
-
-  .insights-section-title {
-    @apply mb-4 text-xl font-sans-bold text-primary;
-  }
-
-  .insights-row {
-    @apply flex-row items-center justify-between gap-4;
-  }
-
-  .insights-row-title {
-    @apply min-w-0 flex-1 text-base font-sans-bold text-primary;
-  }
-
-  .insights-row-subtitle {
-    @apply text-sm font-sans-semibold text-muted-foreground;
-  }
-
-  .insights-row-value {
-    @apply shrink-0 text-sm font-sans-bold text-primary;
-  }
-
-  .insights-bar-track {
-    @apply h-3 overflow-hidden rounded-full bg-muted;
-  }
-
-  .insights-bar-fill {
-    @apply h-full rounded-full bg-accent;
-  }
-
-  .insights-billing-row {
-    @apply flex-row gap-3;
-  }
-
-  .insights-billing-pill {
-    @apply flex-1 rounded-2xl bg-background p-4;
-  }
-
-  .insights-billing-value {
-    @apply text-3xl font-sans-extrabold text-primary;
-  }
-
-  .insights-billing-label {
-    @apply mt-1 text-sm font-sans-semibold text-muted-foreground;
-  }
-
-  .insights-renewal-row {
-    @apply flex-row items-center gap-3 rounded-2xl bg-background p-3;
-  }
-
-  .insights-rank {
-    @apply size-7 shrink-0 items-center justify-center rounded-full bg-accent/15;
-  }
-
-  .insights-rank-text {
-    @apply text-xs font-sans-bold text-accent;
-  }
-
-  .insights-icon {
-    @apply size-11 shrink-0 rounded-xl;
-  }
-
-  .insights-empty {
-    @apply py-2 text-sm font-sans-medium text-muted-foreground;
-  }
-
-  .sub-card {
-    @apply rounded-2xl border border-border p-4;
-  }
-
-  .sub-card-expanded {
-    @apply bg-subscription;
-  }
-
-  .sub-head {
-    @apply flex-row items-center py-2;
-  }
-
-  .sub-main {
-    @apply min-w-0 flex-1 flex-row items-center gap-3;
-  }
-
-  .sub-icon {
-    @apply size-16 rounded-lg;
-  }
-
-  .sub-copy {
-    @apply min-w-0 flex-1;
-  }
-
-  .sub-title {
-    @apply mb-1 text-lg font-sans-bold text-primary;
-  }
-
-  .sub-meta {
-    @apply text-sm font-sans-semibold text-muted-foreground;
-  }
-
-  .sub-price-box {
-    @apply ml-3 shrink-0 items-end;
-  }
-
-  .sub-price {
-    @apply mb-1 text-lg font-sans-bold text-primary;
-  }
-
-  .sub-billing {
-    @apply text-sm font-sans-medium text-muted-foreground;
-  }
-
-  .sub-body {
-    @apply mt-6 gap-4;
-  }
-
-  .sub-details {
-    @apply gap-6;
-  }
-
-  .sub-row {
-    @apply flex-row items-center justify-between gap-3;
-  }
-
-  .sub-row-copy {
-    @apply min-w-0 flex-1 flex-row items-center gap-2;
-  }
-
-  .sub-label {
-    @apply shrink-0 text-base font-sans-medium text-muted-foreground;
-  }
-
-  .sub-value {
-    @apply flex-1 font-sans-bold text-primary;
-  }
-
-  .sub-cancel {
-    @apply mt-2 items-center rounded-full bg-primary py-4;
-  }
-
-  .sub-cancel-disabled {
-    @apply bg-primary/35;
-  }
-
-  .sub-cancel-text {
-    @apply font-sans-bold text-background;
-  }
-
-  .home-empty-state {
-    @apply py-4 text-sm font-sans-medium text-black/60;
+    @apply size-5;
   }
 
   .auth-safe-area {
@@ -395,27 +87,27 @@
   }
 
   .auth-logo-wrap {
-    @apply mb-7 flex-row items-center gap-3;
+    @apply mb-8 items-center gap-3;
   }
 
   .auth-logo-mark {
-    @apply relative size-14 items-center justify-center rounded-2xl bg-accent;
+    @apply size-20 items-center justify-center rounded-2xl border border-gold/50 bg-primary;
   }
 
   .auth-logo-mark-text {
-    @apply text-2xl font-sans-extrabold text-background;
+    @apply text-4xl font-sans-extrabold text-white;
   }
 
   .auth-wordmark {
-    @apply text-3xl font-sans-extrabold text-primary;
+    @apply text-center text-4xl font-sans-extrabold text-primary;
   }
 
   .auth-wordmark-sub {
-    @apply -mt-1 text-xs font-sans-semibold uppercase tracking-[1px] text-muted-foreground;
+    @apply mt-1 text-center text-xs font-sans-semibold uppercase text-muted-foreground;
   }
 
   .auth-title {
-    @apply text-3xl font-sans-bold text-primary;
+    @apply text-center text-3xl font-sans-bold text-primary;
   }
 
   .auth-subtitle {
@@ -423,7 +115,7 @@
   }
 
   .auth-card {
-    @apply mt-8 rounded-3xl border border-border bg-card p-5;
+    @apply mt-8 rounded-2xl border border-border bg-card p-5;
   }
 
   .auth-form {
@@ -439,11 +131,7 @@
   }
 
   .auth-input {
-    @apply rounded-2xl border border-border bg-background px-4 py-4 text-base font-sans-medium text-primary;
-  }
-
-  .auth-input-error {
-    @apply border-destructive;
+    @apply rounded-xl border border-border bg-background px-4 py-4 text-base font-sans-medium text-primary;
   }
 
   .auth-error {
@@ -455,19 +143,19 @@
   }
 
   .auth-button {
-    @apply mt-1 items-center rounded-2xl bg-accent py-4;
+    @apply mt-1 items-center rounded-xl bg-accent py-4;
   }
 
   .auth-button-disabled {
-    @apply bg-accent/45;
+    @apply opacity-50;
   }
 
   .auth-button-text {
-    @apply text-base font-sans-bold text-primary;
+    @apply text-base font-sans-bold text-white;
   }
 
   .auth-secondary-button {
-    @apply items-center rounded-2xl border border-accent/30 bg-accent/10 py-3;
+    @apply items-center rounded-xl border border-accent/30 bg-accent/10 py-3;
   }
 
   .auth-secondary-button-text {
@@ -483,7 +171,7 @@
   }
 
   .auth-divider-text {
-    @apply text-[11px] font-sans-semibold uppercase tracking-[1px] text-muted-foreground;
+    @apply text-[11px] font-sans-semibold uppercase text-muted-foreground;
   }
 
   .auth-link-row {
@@ -496,73 +184,5 @@
 
   .auth-link {
     @apply text-sm font-sans-bold text-accent;
-  }
-
-  .modal-overlay {
-    @apply flex-1 bg-black/50;
-  }
-
-  .modal-container {
-    @apply mt-auto max-h-[85%] rounded-t-3xl bg-background;
-  }
-
-  .modal-header {
-    @apply flex-row items-center justify-between border-b border-border px-5 py-4;
-  }
-
-  .modal-title {
-    @apply text-xl font-sans-bold text-primary;
-  }
-
-  .modal-close {
-    @apply size-8 items-center justify-center rounded-full bg-muted;
-  }
-
-  .modal-close-text {
-    @apply text-lg font-sans-bold text-primary;
-  }
-
-  .modal-body {
-    @apply gap-5 p-5;
-  }
-
-  .picker-row {
-    @apply flex-row gap-3;
-  }
-
-  .picker-option {
-    @apply flex-1 items-center rounded-2xl border border-border bg-background py-3;
-  }
-
-  .picker-option-active {
-    @apply border-accent bg-accent/10;
-  }
-
-  .picker-option-text {
-    @apply text-sm font-sans-semibold text-muted-foreground;
-  }
-
-  .picker-option-text-active {
-    @apply text-accent;
-  }
-
-  .category-scroll {
-    @apply flex-row flex-wrap gap-2;
-  }
-
-  .category-chip {
-    @apply rounded-full border border-border bg-background px-4 py-2;
-  }
-
-  .category-chip-active {
-    @apply border-accent bg-accent/10;
-  }
-
-  .category-chip-text {
-    @apply text-sm font-sans-semibold text-muted-foreground;
-  }
-
-  .category-chip-text-active {
-    @apply text-accent;
   }
 }

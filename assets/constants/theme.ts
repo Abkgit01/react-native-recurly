@@ -1,15 +1,18 @@
 export const colors = {
-  background: "#fff9e3",
-  foreground: "#081126",
-  card: "#fff8e7",
-  muted: "#f6eecf",
-  mutedForeground: "rgba(0, 0, 0, 0.6)",
-  primary: "#081126",
-  accent: "#ea7a53",
-  border: "rgba(0, 0, 0, 0.1)",
-  success: "#16a34a",
+  background: "#f7f3e6",
+  foreground: "#121212",
+  card: "#fffdf7",
+  muted: "#ece6d8",
+  mutedForeground: "rgba(18, 18, 18, 0.62)",
+  primary: "#0a3f2e",
+  accent: "#0e6a4f",
+  border: "rgba(10, 63, 46, 0.14)",
+  success: "#0f8a58",
+  warning: "#e59819",
   destructive: "#dc2626",
-  subscription: "#8fd1bd",
+  syncing: "#1f73d8",
+  offline: "#5f6368",
+  gold: "#c99a2e",
 } as const;
 
 export const spacing = {
@@ -37,8 +40,8 @@ export const spacing = {
 export const components = {
   tabBar: {
     height: spacing[18],
-    horizontalInset: spacing[5],
-    radius: spacing[8],
+    horizontalInset: spacing[4],
+    radius: spacing[6],
     iconFrame: spacing[12],
     itemPaddingVertical: spacing[2],
   },

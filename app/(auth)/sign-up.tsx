@@ -34,7 +34,6 @@ const SignUp = () => {
 
   const handleSignUp = async () => {
     if (!signUp || !canCreate) return;
-
     setIsSubmitting(true);
     setErrorMessage("");
 
@@ -58,9 +57,7 @@ const SignUp = () => {
       setPendingVerification(true);
     } catch (error) {
       setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "Unable to create your account right now.",
+        error instanceof Error ? error.message : "Unable to register right now.",
       );
     } finally {
       setIsSubmitting(false);
@@ -69,7 +66,6 @@ const SignUp = () => {
 
   const handleVerify = async () => {
     if (!signUp || !canVerify) return;
-
     setIsSubmitting(true);
     setErrorMessage("");
 
@@ -89,12 +85,10 @@ const SignUp = () => {
         return;
       }
 
-      setErrorMessage("Verification needs another step before sign-up can finish.");
+      setErrorMessage("Verification needs another step before registration can finish.");
     } catch (error) {
       setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "Unable to verify your email right now.",
+        error instanceof Error ? error.message : "Unable to verify right now.",
       );
     } finally {
       setIsSubmitting(false);
@@ -118,20 +112,17 @@ const SignUp = () => {
           <View className="auth-brand-block">
             <View className="auth-logo-wrap">
               <View className="auth-logo-mark">
-                <Text className="auth-logo-mark-text">R</Text>
+                <Text className="auth-logo-mark-text">✓</Text>
               </View>
-              <View>
-                <Text className="auth-wordmark">Recurly</Text>
-                <Text className="auth-wordmark-sub">SUBSCRIPTIONS</Text>
-              </View>
+              <Text className="auth-wordmark">ElectionWatch</Text>
             </View>
             <Text className="auth-title">
-              {pendingVerification ? "Verify your email" : "Create account"}
+              {pendingVerification ? "Verify your email" : "Register"}
             </Text>
             <Text className="auth-subtitle">
               {pendingVerification
-                ? "Enter the verification code Clerk sent to your inbox."
-                : "Create your first account to start tracking subscriptions."}
+                ? "Enter the six-digit code sent to your inbox."
+                : "Create an election monitoring account."}
             </Text>
           </View>
 
@@ -166,7 +157,6 @@ const SignUp = () => {
                       value={emailAddress}
                     />
                   </View>
-
                   <View className="auth-field">
                     <Text className="auth-label">Password</Text>
                     <TextInput
@@ -178,14 +168,11 @@ const SignUp = () => {
                       secureTextEntry
                       value={password}
                     />
-                    <Text className="auth-helper">Minimum 8 characters required</Text>
                   </View>
                 </>
               )}
 
-              {errorMessage ? (
-                <Text className="auth-error">{errorMessage}</Text>
-              ) : null}
+              {errorMessage ? <Text className="auth-error">{errorMessage}</Text> : null}
 
               <Pressable
                 className={`auth-button ${
@@ -204,10 +191,10 @@ const SignUp = () => {
                   {isSubmitting
                     ? pendingVerification
                       ? "Verifying..."
-                      : "Creating..."
+                      : "Registering..."
                     : pendingVerification
-                      ? "Verify email"
-                      : "Create account"}
+                      ? "Verify"
+                      : "Register"}
                 </Text>
               </Pressable>
               <View nativeID="clerk-captcha" />
@@ -218,7 +205,7 @@ const SignUp = () => {
             <Text className="auth-link-copy">Already have an account?</Text>
             <Link href="/(auth)/sign-in" asChild>
               <Pressable>
-                <Text className="auth-link">Sign in</Text>
+                <Text className="auth-link">Login</Text>
               </Pressable>
             </Link>
           </View>

@@ -29,11 +29,18 @@ const TabLayout = () => {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarShowLabel: false,
+        tabBarShowLabel: true,
+        tabBarActiveTintColor: "#ffffff",
+        tabBarInactiveTintColor: "rgba(255, 255, 255, 0.66)",
+        tabBarLabelStyle: {
+          fontFamily: "sans-semibold",
+          fontSize: 10,
+          marginTop: -6,
+        },
         tabBarStyle: {
           position: "absolute",
           bottom: Math.max(insets.bottom, tabBar.horizontalInset),
-          height: tabBar.height,
+          height: tabBar.height + 8,
           marginHorizontal: tabBar.horizontalInset,
           borderRadius: tabBar.radius,
           backgroundColor: colors.primary,

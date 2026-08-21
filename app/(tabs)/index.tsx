@@ -1,187 +1,124 @@
-import { useAuth, useUser } from "@clerk/expo";
-import "@/global.css";
-import { images } from "@/assets/constants/images";
-import { HOME_BALANCE, HOME_USER } from "@/assets/constants/data";
-import { icons } from "@/assets/constants/icons";
-import CreateSubscriptionModal from "@/components/CreateSubscriptionModal";
-import ListHeading from "@/components/ListHeading";
-import SubscriptionCard from "@/components/SubscriptionCard";
-import UpcomingSubscriptionCard from "@/components/UpcomingSubscriptionCard";
-import { addSubscription, useSubscriptionStore } from "@/lib/subscriptionStore";
-import { formatCurrency } from "@/lib/utils";
-import dayjs from "dayjs";
+import { useUser } from "@clerk/expo";
+import {
+  AppHeader,
+  Card,
+  InfoRow,
+  MetricCard,
+  PrimaryButton,
+  ScreenContainer,
+  StatusBadge,
+} from "@/components/ElectionUI";
+import {
+  assignedPollingUnit,
+  currentAgent,
+  currentElection,
+  electionPackage,
+} from "@/assets/constants/data";
+import { useElectionSubmissions } from "@/lib/electionStore";
+import { formatDate, formatDateTime } from "@/lib/utils";
 import { useRouter } from "expo-router";
 import { styled } from "nativewind";
-import { useEffect, useMemo, useState } from "react";
-import { FlatList, Image, Pressable, ScrollView, Text, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 
 const SafeAreaView = styled(RNSafeAreaView);
 
-const getDaysLeft = (renewalDate: string, currentTime: number) => {
-  const difference = new Date(renewalDate).getTime() - currentTime;
-
-  return Math.max(0, Math.ceil(difference / 86_400_000));
-};
-
-export default function App() {
+export default function Home() {
   const router = useRouter();
-  const { signOut } = useAuth();
   const { user } = useUser();
-  const [signOutError, setSignOutError] = useState("");
-  const subscriptions = useSubscriptionStore();
-  const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
-  const [currentTime, setCurrentTime] = useState(() => Date.now());
-  const [expandedSubscriptionId, setExpandedSubscriptionId] = useState<
-    string | null
-  >(null);
-
-  useEffect(() => {
-    const intervalId = setInterval(() => setCurrentTime(Date.now()), 60_000);
-
-    return () => clearInterval(intervalId);
-  }, []);
-
+  const submissions = useElectionSubmissions();
   const displayName =
     user?.firstName ||
     user?.fullName ||
     user?.primaryEmailAddress?.emailAddress ||
-    HOME_USER.name;
-
-  const upcomingSubscriptions = useMemo(
-    () =>
-      subscriptions
-        .filter(
-          (subscription) =>
-            subscription.status === "active" &&
-            subscription.renewalDate &&
-            new Date(subscription.renewalDate).getTime() > currentTime,
-        )
-        .sort(
-          (first, second) =>
-            new Date(first.renewalDate ?? "").getTime() -
-            new Date(second.renewalDate ?? "").getTime(),
-        )
-        .slice(0, 5),
-    [currentTime, subscriptions],
-  );
-  const nextRenewalDate =
-    upcomingSubscriptions[0]?.renewalDate ?? HOME_BALANCE.nextRenewalDate;
+    currentAgent.name;
+  const pendingUploads = submissions.filter(
+    (submission) => submission.syncStatus === "pending-upload",
+  ).length;
 
   return (
     <SafeAreaView className="flex-1 bg-background">
-      <FlatList
-        data={subscriptions}
-        keyExtractor={(subscription) => subscription.id}
-        className="flex-1"
-        contentContainerClassName="gap-5 p-5 pb-30"
-        showsVerticalScrollIndicator={false}
-        ListHeaderComponent={
-          <>
-            <View className="home-header">
-              <View className="home-user">
-                <Image
-                  source={
-                    user?.imageUrl ? { uri: user.imageUrl } : images.avatar
-                  }
-                  className="home-avatar"
-                />
-                <Text numberOfLines={1} className="home-user-name">
+      <ScreenContainer padded={false}>
+        <ScrollView
+          className="flex-1"
+          contentContainerClassName="gap-5 px-5 pb-30 pt-5"
+          showsVerticalScrollIndicator={false}
+        >
+          <View className="rounded-b-3xl bg-primary p-5">
+            <View className="flex-row items-center gap-4">
+              <View className="size-14 items-center justify-center rounded-full bg-card">
+                <Text className="text-lg font-sans-extrabold text-primary">
+                  {currentAgent.initials}
+                </Text>
+              </View>
+              <View className="min-w-0 flex-1">
+                <Text className="text-xs font-sans-semibold text-white/70">
+                  Welcome,
+                </Text>
+                <Text className="text-xl font-sans-bold text-white" numberOfLines={1}>
                   {displayName}
                 </Text>
-              </View>
-
-              <View className="flex-row items-center gap-3">
-                <Pressable
-                  onPress={async () => {
-                    setSignOutError("");
-
-                    try {
-                      await signOut();
-                    } catch (error) {
-                      console.error("Sign-out failed:", error);
-                      setSignOutError("Unable to sign out. Please try again.");
-                    }
-                  }}
-                >
-                  <Text className="auth-link">Sign out</Text>
-                </Pressable>
-
-                <Pressable onPress={() => setIsCreateModalVisible(true)}>
-                  <Image source={icons.add} className="home-add-icon" />
-                </Pressable>
-              </View>
-            </View>
-            {signOutError ? (
-              <Text className="auth-error">{signOutError}</Text>
-            ) : null}
-
-            <View className="home-balance-card">
-              <Text className="home-balance-label">Balance</Text>
-
-              <View className="home-balance-row">
-                <Text className="home-balance-amount">
-                  {formatCurrency(HOME_BALANCE.amount)}
-                </Text>
-                <Text className="home-balance-date">
-                  {dayjs(nextRenewalDate).format("MM/DD")}
+                <Text className="text-xs font-sans-medium text-white/70">
+                  Field Agent
                 </Text>
               </View>
+              <StatusBadge status={currentAgent.kycStatus} label="KYC Verified" />
             </View>
+          </View>
 
-            <View>
-              <ListHeading
-                title="Upcoming"
-                onPress={() => router.push("/(tabs)/subscriptions")}
-              />
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                {upcomingSubscriptions.map((subscription) => (
-                  <UpcomingSubscriptionCard
-                    key={subscription.id}
-                    icon={subscription.icon}
-                    name={subscription.name}
-                    price={subscription.price}
-                    currency={subscription.currency}
-                    renewalDate={subscription.renewalDate!}
-                    daysLeft={getDaysLeft(
-                      subscription.renewalDate!,
-                      currentTime,
-                    )}
-                  />
-                ))}
-              </ScrollView>
-            </View>
-
-            <ListHeading
-              title="All Subscription"
-              onPress={() => router.push("/(tabs)/subscriptions")}
-            />
-          </>
-        }
-        renderItem={({ item: subscription }) => (
-          <SubscriptionCard
-            {...subscription}
-            expanded={expandedSubscriptionId === subscription.id}
-            onPress={() =>
-              setExpandedSubscriptionId((currentId) =>
-                currentId === subscription.id ? null : subscription.id,
-              )
-            }
+          <AppHeader
+            title="Agent Home"
+            subtitle="Your assigned polling unit and offline capture status."
           />
-        )}
-        ListEmptyComponent={
-          <Text className="home-empty-state">No subscriptions yet.</Text>
-        }
-      />
 
-      <CreateSubscriptionModal
-        visible={isCreateModalVisible}
-        onClose={() => setIsCreateModalVisible(false)}
-        onCreate={(subscription) => {
-          addSubscription(subscription);
-          setExpandedSubscriptionId(subscription.id);
-        }}
-      />
+          <Card className="gap-2">
+            <InfoRow label="Assigned PU" value={assignedPollingUnit.name} />
+            <InfoRow label="Location" value={`${assignedPollingUnit.lga}, ${assignedPollingUnit.state}`} />
+            <InfoRow label="Election" value={currentElection.name} />
+            <InfoRow label="Date" value={formatDate(currentElection.date)} />
+          </Card>
+
+          <View className="flex-row gap-3">
+            <MetricCard label="Open Captures" value="1" />
+            <MetricCard label="Pending Uploads" value={pendingUploads} />
+            <MetricCard label="Last Sync" value="10m" />
+          </View>
+
+          <Card className="gap-4">
+            <View className="flex-row items-center justify-between">
+              <View>
+                <Text className="text-lg font-sans-bold text-primary">
+                  Election Package
+                </Text>
+                <Text className="text-sm font-sans-medium text-muted-foreground">
+                  {electionPackage.version} • downloaded
+                </Text>
+              </View>
+              <StatusBadge status="saved-locally" label="Offline Ready" />
+            </View>
+            <InfoRow
+              label="Last downloaded"
+              value={formatDateTime(electionPackage.lastDownloadedAt)}
+            />
+            <PrimaryButton
+              label="Start Capture"
+              onPress={() => router.push("./capture")}
+            />
+          </Card>
+
+          <Card className="gap-3 border-warning/30 bg-warning/10">
+            <View className="flex-row items-center justify-between">
+              <Text className="text-base font-sans-bold text-primary">
+                Offline Mode
+              </Text>
+              <StatusBadge status="offline" />
+            </View>
+            <Text className="text-sm font-sans-medium text-muted-foreground">
+              You can capture results offline. Submissions remain queued locally until connectivity is available.
+            </Text>
+          </Card>
+        </ScrollView>
+      </ScreenContainer>
     </SafeAreaView>
   );
 }
