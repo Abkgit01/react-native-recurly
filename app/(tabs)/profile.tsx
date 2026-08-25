@@ -17,6 +17,7 @@ import {
   resultReviewQueue,
 } from "@/assets/constants/data";
 import Constants from "expo-constants";
+import { useRouter } from "expo-router";
 import { styled } from "nativewind";
 import { useState } from "react";
 import { Alert, ScrollView, Text, View } from "react-native";
@@ -25,6 +26,7 @@ import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 const SafeAreaView = styled(RNSafeAreaView);
 
 export default function Profile() {
+  const router = useRouter();
   const { signOut } = useAuth();
   const { user } = useUser();
   const [isSigningOut, setIsSigningOut] = useState(false);
@@ -78,6 +80,18 @@ export default function Profile() {
               danger
               label="Clear Local Drafts"
               onPress={() => Alert.alert("Clear local drafts?", "This requires confirmation before removing locally saved drafts.")}
+            />
+          </Card>
+
+          <Card className="gap-4">
+            <Text className="text-lg font-sans-bold text-primary">Agent Actions</Text>
+            <SecondaryButton
+              label="Submit KYC"
+              onPress={() => router.push("../kyc-submission")}
+            />
+            <SecondaryButton
+              label="Report Incident"
+              onPress={() => router.push("../incident-report")}
             />
           </Card>
 
