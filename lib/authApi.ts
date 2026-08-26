@@ -59,21 +59,40 @@ export type GeographyOption = {
 
 export type AgentDashboardResponse = {
   userId: number;
-  fullName: string;
-  email: string;
-  phoneNumber: string;
+  fullName?: string | null;
+  email?: string | null;
+  phoneNumber?: string | null;
   isPhoneVerified: boolean;
-  accountStatus: string;
-  kycStatus: string;
-  kycStatusCode: string;
+  accountStatus?: string | null;
+  kycStatus?: string | null;
+  kycStatusCode?: string | null;
   kycApproved: boolean;
   kycSubmittedAtUtc?: string | null;
   kycReviewedAtUtc?: string | null;
   kycRejectionReason?: string | null;
+  registeredStateName?: string | null;
+  registeredLocalGovernmentAreaName?: string | null;
+  registeredWardName?: string | null;
+  registeredPollingUnitName?: string | null;
   onboardingStatus: string;
   onboardingMessage: string;
   startCaptureEnabled: boolean;
   startCaptureDisabledReason?: string | null;
+  visibleElectionCount: number;
+  openElectionCount: number;
+  nextUploadClosesAtUtc?: string | null;
+  nextUploadWindowText?: string | null;
+  submissionCount: number;
+  recentSubmissions?: AgentRecentSubmission[] | null;
+};
+
+export type AgentRecentSubmission = {
+  resultSubmissionId: number;
+  electionName: string;
+  pollingUnitName: string;
+  status: string;
+  receiptCode: string;
+  submittedAtUtc: string;
 };
 
 export type PvcSelectedLocation = {
@@ -157,6 +176,143 @@ export type SubmitKycRequest = {
 export type SubmitKycResponse = {
   phoneNumber: string;
   submitted: boolean;
+  message: string;
+};
+
+export type ResultCaptureElectionOption = {
+  electionId: number;
+  electionName?: string | null;
+  electionCode?: string | null;
+  electionDate: string;
+  opensAtUtc?: string | null;
+  closesAtUtc?: string | null;
+  uploadWindowText?: string | null;
+};
+
+export type ResultCapturePartyScore = {
+  electionPartyId: number;
+  partyAcronym?: string | null;
+  partyName?: string | null;
+  ballotPosition: number;
+  score?: number | null;
+};
+
+export type OpenResultCaptureOptionsResponse = {
+  isEligible: boolean;
+  ineligibilityReason?: string | null;
+  selectedElectionId?: number | null;
+  isAutoSelected: boolean;
+  pollingUnitName?: string | null;
+  pollingUnitCode?: string | null;
+  wardName?: string | null;
+  localGovernmentAreaName?: string | null;
+  stateName?: string | null;
+  openElections?: ResultCaptureElectionOption[] | null;
+  partyScores?: ResultCapturePartyScore[] | null;
+};
+
+export type StartCaptureSessionRequest = {
+  electionId: number;
+  latitude?: number | null;
+  longitude?: number | null;
+  accuracyMeters?: number | null;
+  shutterCapturedAtUtc?: string | null;
+  deviceId?: string | null;
+  idempotencyKey?: string | null;
+};
+
+export type ResultCaptureSessionStart = {
+  captureSessionId: number;
+  electionId: number;
+  pollingUnitId: number;
+  pollingUnitName: string;
+  pollingUnitCode?: string | null;
+  wardName: string;
+  localGovernmentAreaName: string;
+  stateName: string;
+  startedAtUtc: string;
+  expiresAtUtc: string;
+  status: string;
+  isWithinGeofence: boolean;
+  distanceToPollingUnitMeters?: number | null;
+  message?: string | null;
+};
+
+export type SubmitResultCaptureRequest = {
+  token: string;
+  captureSessionId: number;
+  electionId: number;
+  ec8aImage: KycImageAsset;
+  imageSource: "LiveCapture" | "ManualUpload";
+  manualUploadReason?: string | null;
+  ec8aSerialNumber?: string | null;
+  registeredVoters?: number | null;
+  accreditedVoters?: number | null;
+  totalValidVotes?: number | null;
+  rejectedVotes?: number | null;
+  totalVotesCast?: number | null;
+  note?: string | null;
+  shutterLatitude?: number | null;
+  shutterLongitude?: number | null;
+  shutterAccuracyMeters?: number | null;
+  shutterCapturedAtUtc?: string | null;
+  idempotencyKey?: string | null;
+  partyScores: ResultCapturePartyScore[];
+};
+
+export type SubmitResultCaptureResponse = {
+  resultSubmissionId: number;
+  receiptCode: string;
+  calculatedPartyScoreTotal: number;
+};
+
+export type ResultSubmissionListItem = {
+  resultSubmissionId: number;
+  electionId: number;
+  electionName: string;
+  pollingUnitId: number;
+  pollingUnitName: string;
+  submittedAtUtc: string;
+  status: string;
+  needsReview: boolean;
+  calculatedPartyScoreTotal: number;
+  reviewStatus?: string | null;
+};
+
+export type IncidentElectionOption = ResultCaptureElectionOption;
+
+export type IncidentStartResponse = {
+  isEligible: boolean;
+  ineligibilityReason?: string | null;
+  selectedElectionId?: number | null;
+  pollingUnitName?: string | null;
+  pollingUnitCode?: string | null;
+  wardName?: string | null;
+  localGovernmentAreaName?: string | null;
+  stateName?: string | null;
+  eligibleElections?: IncidentElectionOption[] | null;
+};
+
+export type IncidentAttachmentAsset = KycImageAsset;
+
+export type SubmitIncidentRequest = {
+  token: string;
+  electionId: number;
+  type: number;
+  severity: number;
+  description: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  locationAccuracyMeters?: number | null;
+  locationDescription?: string | null;
+  incidentHappenedAtUtc?: string | null;
+  confirmationAccepted: boolean;
+  attachments: IncidentAttachmentAsset[];
+};
+
+export type SubmitIncidentResponse = {
+  incidentReportId: number;
+  incidentNumber: string;
   message: string;
 };
 
@@ -277,6 +433,37 @@ export const getPollingUnits = (wardId: number) =>
     `/api/geography/polling-units?wardId=${wardId}`,
   );
 
+export const getOpenResultCaptureOptions = (token: string, electionId?: number) =>
+  apiRequest<OpenResultCaptureOptionsResponse>(
+    `/api/result-submissions/open-elections${
+      electionId ? `?electionId=${electionId}` : ""
+    }`,
+    { token },
+  );
+
+export const getResultCaptureEligibility = (token: string, electionId?: number) =>
+  apiRequest<OpenResultCaptureOptionsResponse>(
+    `/api/result-submissions/eligibility${
+      electionId ? `?electionId=${electionId}` : ""
+    }`,
+    { token },
+  );
+
+export const startResultCaptureSession = (
+  token: string,
+  payload: StartCaptureSessionRequest,
+) =>
+  postJson<ResultCaptureSessionStart>(
+    "/api/result-submissions/start-capture",
+    payload,
+    token,
+  );
+
+export const getMyResultSubmissions = (token: string) =>
+  apiRequest<ResultSubmissionListItem[]>("/api/result-submissions/my", {
+    token,
+  });
+
 export const analyzePvcImage = ({
   token,
   pvcImage,
@@ -333,6 +520,124 @@ export const submitKyc = ({
   formData.append("SelfieConsentAccepted", String(selfieConsentAccepted));
 
   return apiRequest<SubmitKycResponse>("/api/Account/submit-kyc", {
+    method: "POST",
+    token,
+    body: formData,
+  });
+};
+
+export const submitResultCapture = ({
+  token,
+  captureSessionId,
+  electionId,
+  ec8aImage,
+  imageSource,
+  manualUploadReason,
+  ec8aSerialNumber,
+  registeredVoters,
+  accreditedVoters,
+  totalValidVotes,
+  rejectedVotes,
+  totalVotesCast,
+  note,
+  shutterLatitude,
+  shutterLongitude,
+  shutterAccuracyMeters,
+  shutterCapturedAtUtc,
+  idempotencyKey,
+  partyScores,
+}: SubmitResultCaptureRequest) => {
+  const formData = new FormData();
+  formData.append("CaptureSessionId", String(captureSessionId));
+  formData.append("ElectionId", String(electionId));
+  appendImage(formData, "Ec8aImage", ec8aImage);
+  formData.append("ImageSource", imageSource);
+  if (manualUploadReason) formData.append("ManualUploadReason", manualUploadReason);
+  if (ec8aSerialNumber) formData.append("Ec8aSerialNumber", ec8aSerialNumber);
+  if (registeredVoters !== null && registeredVoters !== undefined) {
+    formData.append("RegisteredVoters", String(registeredVoters));
+  }
+  if (accreditedVoters !== null && accreditedVoters !== undefined) {
+    formData.append("AccreditedVoters", String(accreditedVoters));
+  }
+  if (totalValidVotes !== null && totalValidVotes !== undefined) {
+    formData.append("TotalValidVotes", String(totalValidVotes));
+  }
+  if (rejectedVotes !== null && rejectedVotes !== undefined) {
+    formData.append("RejectedVotes", String(rejectedVotes));
+  }
+  if (totalVotesCast !== null && totalVotesCast !== undefined) {
+    formData.append("TotalVotesCast", String(totalVotesCast));
+  }
+  if (note) formData.append("Note", note);
+  if (shutterLatitude !== null && shutterLatitude !== undefined) {
+    formData.append("ShutterLatitude", String(shutterLatitude));
+  }
+  if (shutterLongitude !== null && shutterLongitude !== undefined) {
+    formData.append("ShutterLongitude", String(shutterLongitude));
+  }
+  if (shutterAccuracyMeters !== null && shutterAccuracyMeters !== undefined) {
+    formData.append("ShutterAccuracyMeters", String(shutterAccuracyMeters));
+  }
+  if (shutterCapturedAtUtc) {
+    formData.append("ShutterCapturedAtUtc", shutterCapturedAtUtc);
+  }
+  if (idempotencyKey) formData.append("IdempotencyKey", idempotencyKey);
+  formData.append("PartyScoresJson", JSON.stringify(partyScores));
+
+  return apiRequest<SubmitResultCaptureResponse>("/api/result-submissions", {
+    method: "POST",
+    token,
+    body: formData,
+  });
+};
+
+export const getIncidentStart = (token: string, electionId?: number) =>
+  apiRequest<IncidentStartResponse>(
+    `/api/incidents/start${electionId ? `?electionId=${electionId}` : ""}`,
+    { token },
+  );
+
+export const submitIncidentReport = ({
+  token,
+  electionId,
+  type,
+  severity,
+  description,
+  latitude,
+  longitude,
+  locationAccuracyMeters,
+  locationDescription,
+  incidentHappenedAtUtc,
+  confirmationAccepted,
+  attachments,
+}: SubmitIncidentRequest) => {
+  const formData = new FormData();
+  formData.append("ElectionId", String(electionId));
+  formData.append("Type", String(type));
+  formData.append("Severity", String(severity));
+  formData.append("Description", description);
+  if (latitude !== null && latitude !== undefined) {
+    formData.append("Latitude", String(latitude));
+  }
+  if (longitude !== null && longitude !== undefined) {
+    formData.append("Longitude", String(longitude));
+  }
+  if (locationAccuracyMeters !== null && locationAccuracyMeters !== undefined) {
+    formData.append("LocationAccuracyMeters", String(locationAccuracyMeters));
+  }
+  if (locationDescription) {
+    formData.append("LocationDescription", locationDescription);
+  }
+  if (incidentHappenedAtUtc) {
+    formData.append("IncidentHappenedAtUtc", incidentHappenedAtUtc);
+  }
+  formData.append("ConfirmationAccepted", String(confirmationAccepted));
+  attachments.forEach((attachment) =>
+    appendImage(formData, "Attachments", attachment),
+  );
+
+  return apiRequest<SubmitIncidentResponse>("/api/incidents", {
     method: "POST",
     token,
     body: formData,

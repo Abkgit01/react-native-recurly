@@ -3,6 +3,17 @@ import { clsx } from "clsx";
 import { ReactNode } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 
+type SubmissionCardData = {
+  id: string;
+  localReference: string;
+  pollingUnit: { name: string };
+  capturedAt: string;
+  syncStatus: SyncStatus;
+  syncProgress?: number;
+  errorMessage?: string;
+  serverReference?: string;
+};
+
 export const ScreenContainer = ({
   children,
   padded = true,
@@ -161,7 +172,7 @@ export const SubmissionCard = ({
   submission,
   onRetry,
 }: {
-  submission: ResultSubmission;
+  submission: SubmissionCardData;
   onRetry?: () => void;
 }) => (
   <Card className="gap-3">
@@ -171,7 +182,7 @@ export const SubmissionCard = ({
           {submission.pollingUnit.name}
         </Text>
         <Text className="mt-1 text-xs font-sans-medium text-muted-foreground">
-          {submission.localReference} • {formatDateTime(submission.capturedAt)}
+          {submission.localReference} - {formatDateTime(submission.capturedAt)}
         </Text>
       </View>
       <StatusBadge status={submission.syncStatus} />
@@ -183,6 +194,16 @@ export const SubmissionCard = ({
     ) : null}
     {submission.syncStatus === "failed" || submission.syncStatus === "server-rejected" ? (
       <SecondaryButton label="Retry" onPress={onRetry} />
+    ) : null}
+    {submission.errorMessage ? (
+      <Text className="text-xs font-sans-semibold text-destructive">
+        {submission.errorMessage}
+      </Text>
+    ) : null}
+    {submission.serverReference ? (
+      <Text className="text-xs font-sans-semibold text-success">
+        Server reference: {submission.serverReference}
+      </Text>
     ) : null}
   </Card>
 );

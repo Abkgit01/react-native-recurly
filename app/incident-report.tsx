@@ -8,27 +8,97 @@ import {
   SecondaryButton,
   StatusBadge,
 } from "@/components/ElectionUI";
-import { assignedPollingUnit, currentElection } from "@/assets/constants/data";
+import {
+  getIncidentStart,
+  submitIncidentReport,
+  type IncidentStartResponse,
+  type KycImageAsset,
+} from "@/lib/authApi";
 import { Redirect, useRouter } from "expo-router";
+import * as ImagePicker from "expo-image-picker";
 import { useAuthSession } from "@/lib/authSession";
 import { styled } from "nativewind";
-import { useState } from "react";
-import { Alert, ScrollView, Text, View } from "react-native";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Alert, Image, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 
 const SafeAreaView = styled(RNSafeAreaView);
 
+const incidentTypes = [
+  { value: 1, label: "Violence" },
+  { value: 2, label: "Vote buying" },
+  { value: 3, label: "Intimidation" },
+  { value: 4, label: "Ballot snatching" },
+  { value: 5, label: "Missing materials" },
+  { value: 6, label: "Equipment failure" },
+  { value: 7, label: "Other misconduct" },
+];
+
+const severityOptions = [
+  { value: 1, label: "Low" },
+  { value: 2, label: "Medium" },
+  { value: 3, label: "High" },
+  { value: 4, label: "Critical" },
+];
+
+const getImageName = (uri: string, fallback: string) => {
+  const name = uri.split("/").pop()?.split("?")[0];
+  return name || fallback;
+};
+
 export default function IncidentReportScreen() {
   const router = useRouter();
-  const { isLoaded, isSignedIn } = useAuthSession();
-  const [incidentType, setIncidentType] = useState("Network outage");
+  const { isLoaded, isSignedIn, token } = useAuthSession();
+  const [start, setStart] = useState<IncidentStartResponse | null>(null);
+  const [selectedElectionId, setSelectedElectionId] = useState<number | null>(null);
+  const [incidentType, setIncidentType] = useState(1);
+  const [severity, setSeverity] = useState(2);
   const [description, setDescription] = useState("");
-  const [evidenceRef, setEvidenceRef] = useState("");
-  const [submitted, setSubmitted] = useState(false);
-  const [localReference] = useState(() => `EW-INC-${String(Date.now()).slice(-6)}`);
+  const [locationDescription, setLocationDescription] = useState("");
+  const [evidence, setEvidence] = useState<KycImageAsset[]>([]);
+  const [confirmationAccepted, setConfirmationAccepted] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [incidentNumber, setIncidentNumber] = useState("");
 
-  const isEligible = currentElection.status === "active";
-  const canSubmit = isEligible && incidentType.trim() && description.trim();
+  const selectedElection = useMemo(
+    () =>
+      (start?.eligibleElections ?? []).find(
+        (election) => election.electionId === selectedElectionId,
+      ) ?? null,
+    [selectedElectionId, start?.eligibleElections],
+  );
+
+  const loadStart = useCallback(
+    async (electionId?: number) => {
+      if (!token) return;
+      setIsLoading(true);
+      setErrorMessage("");
+      try {
+        const result = await getIncidentStart(token, electionId);
+        setStart(result);
+        setSelectedElectionId(
+          result.selectedElectionId ??
+            result.eligibleElections?.[0]?.electionId ??
+            null,
+        );
+      } catch (error) {
+        setErrorMessage(
+          error instanceof Error
+            ? error.message
+            : "Incident reporting could not be loaded.",
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [token],
+  );
+
+  useEffect(() => {
+    loadStart();
+  }, [loadStart]);
 
   if (!isLoaded) return null;
   if (!isSignedIn) return <Redirect href="/(auth)/sign-in" />;
@@ -37,18 +107,102 @@ export default function IncidentReportScreen() {
     router.replace("/(tabs)/profile");
   };
 
-  const submitIncident = () => {
-    if (!isEligible) {
-      Alert.alert("Not eligible", "No open election is configured for your verified polling unit.");
+  const chooseEvidence = async (source: "camera" | "library") => {
+    const permission =
+      source === "camera"
+        ? await ImagePicker.requestCameraPermissionsAsync()
+        : await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permission.granted) {
+      Alert.alert(
+        "Permission needed",
+        source === "camera"
+          ? "Camera access is needed to attach incident evidence."
+          : "Photo library access is needed to attach incident evidence.",
+      );
       return;
     }
 
-    if (!canSubmit) {
-      Alert.alert("Incident incomplete", "Select an incident type and describe what happened.");
+    const result =
+      source === "camera"
+        ? await ImagePicker.launchCameraAsync({
+            allowsEditing: false,
+            base64: false,
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            quality: 0.8,
+          })
+        : await ImagePicker.launchImageLibraryAsync({
+            allowsEditing: false,
+            base64: false,
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            quality: 0.8,
+          });
+
+    if (result.canceled || !result.assets?.[0]?.uri) return;
+
+    const asset = result.assets[0];
+    setEvidence((items) =>
+      [
+        ...items,
+        {
+          uri: asset.uri,
+          fileName: asset.fileName ?? getImageName(asset.uri, "incident.jpg"),
+          mimeType: asset.mimeType ?? "image/jpeg",
+        },
+      ].slice(0, 5),
+    );
+  };
+
+  const canSubmit =
+    Boolean(start?.isEligible) &&
+    Boolean(selectedElectionId) &&
+    Boolean(description.trim()) &&
+    confirmationAccepted &&
+    !isSubmitting;
+
+  const submitIncident = async () => {
+    if (!token || !selectedElectionId) return;
+    if (!start?.isEligible) {
+      Alert.alert(
+        "Not eligible",
+        start?.ineligibilityReason ??
+          "No open election is configured for your verified polling unit.",
+      );
+      return;
+    }
+    if (!description.trim()) {
+      Alert.alert("Incident incomplete", "Describe what happened before submitting.");
+      return;
+    }
+    if (!confirmationAccepted) {
+      Alert.alert("Confirmation required", "Confirm that this incident report is accurate.");
       return;
     }
 
-    setSubmitted(true);
+    setIsSubmitting(true);
+    setErrorMessage("");
+    try {
+      const result = await submitIncidentReport({
+        token,
+        electionId: selectedElectionId,
+        type: incidentType,
+        severity,
+        description: description.trim(),
+        locationDescription: locationDescription.trim() || null,
+        incidentHappenedAtUtc: new Date().toISOString(),
+        confirmationAccepted,
+        attachments: evidence,
+      });
+      setIncidentNumber(result.incidentNumber);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Incident report could not be submitted.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -62,59 +216,166 @@ export default function IncidentReportScreen() {
         >
           <AppHeader
             title="Report Incident"
-            subtitle="Submit operational or security incidents tied to your verified polling unit."
+            subtitle="Submit incidents tied to your verified polling unit."
           />
 
-          {!isEligible ? (
-            <Card className="gap-3 border-warning/30 bg-warning/10">
-              <Text className="text-xl font-sans-bold text-warning">
-                You are not eligible to report an incident
+          {isLoading ? (
+            <Card className="gap-3">
+              <Text className="text-lg font-sans-bold text-primary">
+                Loading incident context
               </Text>
               <Text className="text-sm font-sans-medium text-muted-foreground">
-                No open election is configured for your verified polling unit.
+                Checking your verification, assignment, and open elections.
+              </Text>
+            </Card>
+          ) : null}
+
+          {errorMessage ? (
+            <Card className="gap-3 border-destructive/30 bg-destructive/5">
+              <Text className="text-sm font-sans-bold text-destructive">
+                {errorMessage}
+              </Text>
+              <SecondaryButton label="Retry" onPress={() => loadStart()} />
+            </Card>
+          ) : null}
+
+          {!isLoading && start && !start.isEligible ? (
+            <Card className="gap-3 border-warning/30 bg-warning/10">
+              <Text className="text-xl font-sans-bold text-warning">
+                Incident reporting locked
+              </Text>
+              <Text className="text-sm font-sans-medium text-muted-foreground">
+                {start.ineligibilityReason ??
+                  "You will be able to report incidents once your verification and assignment are active."}
               </Text>
               <SecondaryButton label="Back to Profile" onPress={goToProfile} />
             </Card>
           ) : null}
 
-          {submitted ? (
-            <Card className="gap-4 border-warning/30 bg-warning/10">
-              <StatusBadge status="pending-upload" label="Saved Offline" />
+          {incidentNumber ? (
+            <Card className="gap-4 border-success/30 bg-success/10">
+              <StatusBadge status="synced" label="Submitted" />
               <Text className="text-xl font-sans-bold text-primary">
-                Incident queued
+                Incident submitted
               </Text>
               <Text className="text-sm font-sans-medium text-muted-foreground">
-                The incident is saved locally and will sync when connectivity is available.
+                The backend has received this incident report for review.
               </Text>
-              <InfoRow label="Local reference" value={localReference} />
+              <InfoRow label="Reference" value={incidentNumber} />
               <PrimaryButton label="Back to Profile" onPress={goToProfile} />
             </Card>
           ) : null}
 
-          {isEligible && !submitted ? (
+          {!isLoading && start?.isEligible && !incidentNumber ? (
             <>
               <Card className="gap-4">
                 <Text className="text-xl font-sans-bold text-primary">
                   Polling unit
                 </Text>
-                <InfoRow label="Election" value={currentElection.name} />
-                <InfoRow label="Polling Unit" value={assignedPollingUnit.name} />
-                <InfoRow label="State" value={assignedPollingUnit.state} />
-                <InfoRow label="LGA" value={assignedPollingUnit.lga} />
-                <InfoRow label="Ward" value={assignedPollingUnit.ward} />
+                <InfoRow
+                  label="Election"
+                  value={selectedElection?.electionName ?? "Open election"}
+                />
+                <InfoRow
+                  label="Polling Unit"
+                  value={start.pollingUnitName ?? "Assigned polling unit"}
+                />
+                <InfoRow label="State" value={start.stateName ?? "Not available"} />
+                <InfoRow
+                  label="LGA"
+                  value={start.localGovernmentAreaName ?? "Not available"}
+                />
+                <InfoRow label="Ward" value={start.wardName ?? "Not available"} />
                 <StatusBadge status="verified" label="Verified Polling Unit" />
               </Card>
+
+              {start.eligibleElections && start.eligibleElections.length > 1 ? (
+                <Card className="gap-3">
+                  <Text className="text-lg font-sans-bold text-primary">
+                    Election
+                  </Text>
+                  {start.eligibleElections.map((election) => (
+                    <Pressable
+                      key={election.electionId}
+                      className={`rounded-xl border p-3 ${
+                        election.electionId === selectedElectionId
+                          ? "border-accent bg-accent/10"
+                          : "border-border bg-background"
+                      }`}
+                      onPress={() => {
+                        setSelectedElectionId(election.electionId);
+                        loadStart(election.electionId);
+                      }}
+                    >
+                      <Text className="font-sans-bold text-primary">
+                        {election.electionName ?? "Election"}
+                      </Text>
+                      <Text className="mt-1 text-xs font-sans-medium text-muted-foreground">
+                        {election.uploadWindowText ?? election.electionCode ?? "Open"}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </Card>
+              ) : null}
 
               <Card className="gap-4">
                 <Text className="text-xl font-sans-bold text-primary">
                   Incident details
                 </Text>
-                <FormField
-                  label="Incident type"
-                  value={incidentType}
-                  onChangeText={setIncidentType}
-                  placeholder="Network outage, late opening, disruption..."
-                />
+                <View className="gap-2">
+                  <Text className="text-sm font-sans-semibold text-primary">
+                    Incident type
+                  </Text>
+                  <View className="flex-row flex-wrap gap-2">
+                    {incidentTypes.map((item) => (
+                      <Pressable
+                        key={item.value}
+                        className={`rounded-full px-3 py-2 ${
+                          incidentType === item.value
+                            ? "bg-accent"
+                            : "bg-accent/10"
+                        }`}
+                        onPress={() => setIncidentType(item.value)}
+                      >
+                        <Text
+                          className={`text-xs font-sans-bold ${
+                            incidentType === item.value
+                              ? "text-white"
+                              : "text-accent"
+                          }`}
+                        >
+                          {item.label}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+                <View className="gap-2">
+                  <Text className="text-sm font-sans-semibold text-primary">
+                    Severity
+                  </Text>
+                  <View className="flex-row flex-wrap gap-2">
+                    {severityOptions.map((item) => (
+                      <Pressable
+                        key={item.value}
+                        className={`rounded-full px-3 py-2 ${
+                          severity === item.value ? "bg-warning" : "bg-warning/10"
+                        }`}
+                        onPress={() => setSeverity(item.value)}
+                      >
+                        <Text
+                          className={`text-xs font-sans-bold ${
+                            severity === item.value
+                              ? "text-white"
+                              : "text-warning"
+                          }`}
+                        >
+                          {item.label}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
                 <FormField
                   label="Description"
                   value={description}
@@ -123,36 +384,82 @@ export default function IncidentReportScreen() {
                   placeholder="Describe what happened..."
                 />
                 <FormField
-                  label="Evidence"
-                  value={evidenceRef}
-                  onChangeText={setEvidenceRef}
-                  placeholder="Optional image/video local reference"
+                  label="Location note"
+                  value={locationDescription}
+                  onChangeText={setLocationDescription}
+                  placeholder="Optional location detail"
                 />
+              </Card>
+
+              <Card className="gap-4">
+                <Text className="text-xl font-sans-bold text-primary">
+                  Evidence
+                </Text>
+                {evidence.length ? (
+                  <View className="flex-row flex-wrap gap-3">
+                    {evidence.map((item) => (
+                      <Image
+                        key={item.uri}
+                        className="h-20 w-20 rounded-xl border border-border"
+                        source={{ uri: item.uri }}
+                      />
+                    ))}
+                  </View>
+                ) : (
+                  <Text className="text-sm font-sans-medium text-muted-foreground">
+                    Add photo evidence if available.
+                  </Text>
+                )}
                 <View className="flex-row gap-3">
                   <View className="flex-1">
-                    <SecondaryButton label="Attach file" onPress={() => setEvidenceRef("incident-evidence-local.jpg")} />
+                    <SecondaryButton
+                      label="Attach file"
+                      onPress={() => chooseEvidence("library")}
+                    />
                   </View>
                   <View className="flex-1">
-                    <PrimaryButton label="Use camera" onPress={() => setEvidenceRef("incident-camera-capture.jpg")} />
+                    <PrimaryButton
+                      label="Use camera"
+                      onPress={() => chooseEvidence("camera")}
+                    />
                   </View>
                 </View>
               </Card>
 
-              <Card className="gap-3 border-warning/30 bg-warning/10">
-                <Text className="text-base font-sans-bold text-primary">
-                  Offline-ready
+              <Pressable
+                className="flex-row items-center gap-3 rounded-2xl border border-border bg-card p-4"
+                onPress={() => setConfirmationAccepted((value) => !value)}
+              >
+                <View
+                  className={`h-6 w-6 items-center justify-center rounded-md border ${
+                    confirmationAccepted
+                      ? "border-accent bg-accent"
+                      : "border-border bg-background"
+                  }`}
+                >
+                  <Text className="text-xs font-sans-bold text-white">
+                    {confirmationAccepted ? "✓" : ""}
+                  </Text>
+                </View>
+                <Text className="flex-1 text-sm font-sans-medium text-primary">
+                  I confirm this incident report is accurate to the best of my knowledge.
                 </Text>
-                <Text className="text-sm font-sans-medium text-muted-foreground">
-                  If there is no internet connection, this report remains saved locally until sync completes.
-                </Text>
-              </Card>
+              </Pressable>
 
               <View className="flex-row gap-3">
                 <View className="flex-1">
-                  <SecondaryButton label="Back" onPress={goToProfile} />
+                  <SecondaryButton
+                    label="Back"
+                    disabled={isSubmitting}
+                    onPress={goToProfile}
+                  />
                 </View>
                 <View className="flex-1">
-                  <PrimaryButton label="Submit Incident" disabled={!canSubmit} onPress={submitIncident} />
+                  <PrimaryButton
+                    label={isSubmitting ? "Submitting..." : "Submit Incident"}
+                    disabled={!canSubmit}
+                    onPress={submitIncident}
+                  />
                 </View>
               </View>
             </>

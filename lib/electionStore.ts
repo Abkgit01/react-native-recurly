@@ -1,36 +1,45 @@
 import {
-  assignedPollingUnit,
-  currentElection,
-  electionPackage,
-  parties,
-} from "@/assets/constants/data";
+  submitResultCapture,
+  type KycImageAsset,
+  type ResultCaptureElectionOption,
+  type ResultCapturePartyScore,
+  type SubmitResultCaptureRequest,
+} from "@/lib/authApi";
 import { useSyncExternalStore } from "react";
 
 type Listener = () => void;
 
-const createInitialSubmission = (): ResultSubmission => ({
-  id: "local-000312",
-  localReference: "EW-LOCAL-000312",
-  election: currentElection,
-  pollingUnit: assignedPollingUnit,
-  partyScores: [
-    { partyId: "apc", score: 132 },
-    { partyId: "lp", score: 87 },
-    { partyId: "pdp", score: 45 },
-    { partyId: "nnpp", score: 22 },
-    { partyId: "adp", score: 10 },
-  ],
-  registeredVoters: 500,
-  accreditedVoters: 312,
-  validVotes: 296,
-  rejectedVotes: 16,
-  totalVotesCast: 312,
-  notes: "Saved locally from field capture.",
-  capturedAt: new Date().toISOString(),
-  syncStatus: "pending-upload",
-});
+export type QueuedResultSubmission = {
+  id: string;
+  localReference: string;
+  election: ResultCaptureElectionOption;
+  pollingUnit: {
+    id?: number;
+    code?: string | null;
+    name: string;
+    state: string;
+    lga: string;
+    ward: string;
+  };
+  partyScores: ResultCapturePartyScore[];
+  registeredVoters: number | null;
+  accreditedVoters: number | null;
+  validVotes: number | null;
+  rejectedVotes: number | null;
+  totalVotesCast: number | null;
+  notes?: string;
+  image: KycImageAsset;
+  capturedAt: string;
+  syncStatus: SyncStatus;
+  syncProgress?: number;
+  serverReference?: string;
+  resultSubmissionId?: number;
+  errorMessage?: string;
+  submitPayload: Omit<SubmitResultCaptureRequest, "token">;
+};
 
-let submissions: ResultSubmission[] = [createInitialSubmission()];
+let submissions: QueuedResultSubmission[] = [];
+let lastSuccessfulSyncAt: string | null = null;
 const listeners = new Set<Listener>();
 
 const emitChange = () => listeners.forEach((listener) => listener());
@@ -39,20 +48,25 @@ const subscribe = (listener: Listener) => {
   return () => listeners.delete(listener);
 };
 
+const createLocalReference = () =>
+  `EW-LOCAL-${Date.now().toString().slice(-8)}`;
+
 export const useElectionSubmissions = () =>
   useSyncExternalStore(subscribe, () => submissions, () => submissions);
 
-export const getElectionPackage = () => electionPackage;
-export const getParties = () => parties;
+export const getLastSuccessfulSyncAt = () => lastSuccessfulSyncAt;
 
 export const queueSubmission = (
-  values: Omit<ResultSubmission, "id" | "localReference" | "capturedAt" | "syncStatus">,
+  values: Omit<
+    QueuedResultSubmission,
+    "id" | "localReference" | "capturedAt" | "syncStatus"
+  >,
 ) => {
-  const nextNumber = submissions.length + 313;
-  const submission: ResultSubmission = {
+  const localReference = createLocalReference();
+  const submission: QueuedResultSubmission = {
     ...values,
-    id: `local-${nextNumber}`,
-    localReference: `EW-LOCAL-${String(nextNumber).padStart(6, "0")}`,
+    id: localReference,
+    localReference,
     capturedAt: new Date().toISOString(),
     syncStatus: "pending-upload",
   };
@@ -62,11 +76,66 @@ export const queueSubmission = (
   return submission;
 };
 
-export const retrySubmission = (id: string) => {
+export const markSubmissionSynced = (
+  id: string,
+  serverReference: string,
+  resultSubmissionId: number,
+) => {
+  lastSuccessfulSyncAt = new Date().toISOString();
   submissions = submissions.map((submission) =>
     submission.id === id
-      ? { ...submission, syncStatus: "syncing", syncProgress: 48 }
+      ? {
+          ...submission,
+          syncStatus: "synced",
+          syncProgress: 100,
+          serverReference,
+          submitPayload: submission.submitPayload,
+          resultSubmissionId,
+        }
       : submission,
   );
   emitChange();
+};
+
+export const markSubmissionFailed = (id: string, errorMessage: string) => {
+  submissions = submissions.map((submission) =>
+    submission.id === id
+      ? {
+          ...submission,
+          syncStatus: "failed",
+          syncProgress: undefined,
+          errorMessage,
+        }
+      : submission,
+  );
+  emitChange();
+};
+
+export const syncQueuedSubmission = async (token: string, id: string) => {
+  const submission = submissions.find((item) => item.id === id);
+  if (!submission || submission.syncStatus === "syncing") return;
+
+  submissions = submissions.map((item) =>
+    item.id === id ? { ...item, syncStatus: "syncing", syncProgress: 35 } : item,
+  );
+  emitChange();
+
+  try {
+    const result = await submitResultCapture({
+      token,
+      ...submission.submitPayload,
+    });
+    markSubmissionSynced(
+      id,
+      result.receiptCode,
+      result.resultSubmissionId,
+    );
+  } catch (error) {
+    markSubmissionFailed(
+      id,
+      error instanceof Error
+        ? error.message
+        : "Submission could not be synchronized.",
+    );
+  }
 };
