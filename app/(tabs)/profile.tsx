@@ -1,4 +1,3 @@
-import { useAuth, useUser } from "@clerk/expo";
 import {
   AppHeader,
   Card,
@@ -18,6 +17,7 @@ import {
 } from "@/assets/constants/data";
 import Constants from "expo-constants";
 import { useRouter } from "expo-router";
+import { useAuthSession } from "@/lib/authSession";
 import { styled } from "nativewind";
 import { useState } from "react";
 import { Alert, ScrollView, Text, View } from "react-native";
@@ -27,20 +27,19 @@ const SafeAreaView = styled(RNSafeAreaView);
 
 export default function Profile() {
   const router = useRouter();
-  const { signOut } = useAuth();
-  const { user } = useUser();
+  const { clearAuthSession, user } = useAuthSession();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const displayName =
-    user?.firstName ||
     user?.fullName ||
-    user?.primaryEmailAddress?.emailAddress ||
+    user?.email ||
     currentAgent.name;
 
   const handleSignOut = async () => {
     if (isSigningOut) return;
     setIsSigningOut(true);
     try {
-      await signOut();
+      await clearAuthSession();
+      router.replace("/(auth)/sign-in");
     } catch {
       setIsSigningOut(false);
     }
@@ -63,8 +62,8 @@ export default function Profile() {
               </View>
               <StatusBadge status={currentAgent.kycStatus} />
             </View>
-            <InfoRow label="Phone" value={currentAgent.phone} />
-            <InfoRow label="Email" value={user?.primaryEmailAddress?.emailAddress ?? currentAgent.email} />
+            <InfoRow label="Phone" value={user?.phoneNumber ?? currentAgent.phone} />
+            <InfoRow label="Email" value={user?.email ?? currentAgent.email} />
             <InfoRow label="Assignment" value={assignedPollingUnit.name} />
             <InfoRow label="Device" value={currentAgent.deviceStatus} />
             <InfoRow label="Version" value={Constants.expoConfig?.version ?? "1.0.0"} />

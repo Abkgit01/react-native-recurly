@@ -1,4 +1,3 @@
-import { useUser } from "@clerk/expo";
 import {
   AppHeader,
   Card,
@@ -15,6 +14,7 @@ import {
   electionPackage,
 } from "@/assets/constants/data";
 import { useElectionSubmissions } from "@/lib/electionStore";
+import { useAuthSession } from "@/lib/authSession";
 import { formatDate, formatDateTime } from "@/lib/utils";
 import { useRouter } from "expo-router";
 import { styled } from "nativewind";
@@ -25,12 +25,11 @@ const SafeAreaView = styled(RNSafeAreaView);
 
 export default function Home() {
   const router = useRouter();
-  const { user } = useUser();
+  const { user } = useAuthSession();
   const submissions = useElectionSubmissions();
   const displayName =
-    user?.firstName ||
     user?.fullName ||
-    user?.primaryEmailAddress?.emailAddress ||
+    user?.email ||
     currentAgent.name;
   const pendingUploads = submissions.filter(
     (submission) => submission.syncStatus === "pending-upload",

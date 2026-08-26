@@ -1,6 +1,5 @@
-import { ClerkProvider } from "@clerk/expo";
-import { tokenCache } from "@clerk/expo/token-cache";
 import "@/global.css";
+import { AuthSessionProvider } from "@/lib/authSession";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -8,7 +7,6 @@ import { PostHogProvider, usePostHog } from "posthog-react-native";
 import { useEffect, type ReactNode } from "react";
 import { Text, View } from "react-native";
 
-const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? "";
 const postHogApiKey = process.env.EXPO_PUBLIC_POSTHOG_API_KEY ?? "";
 const postHogHost =
   process.env.EXPO_PUBLIC_POSTHOG_HOST ?? "https://us.i.posthog.com";
@@ -40,21 +38,6 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }
   }, [fontError, fontsLoaded]);
-
-  if (!publishableKey) {
-    if (__DEV__) {
-      console.error("Missing EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY.");
-    }
-
-    return (
-      <View className="flex-1 items-center justify-center bg-background p-5">
-        <Text className="text-center text-base font-sans-bold text-primary">
-          Missing Clerk publishable key. Add it to .env, then restart the dev
-          server.
-        </Text>
-      </View>
-    );
-  }
 
   if (fontError) {
     console.error("Failed to load app fonts", fontError);
@@ -88,9 +71,5 @@ export default function RootLayout() {
     content
   );
 
-  return (
-    <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
-      {appContent}
-    </ClerkProvider>
-  );
+  return <AuthSessionProvider>{appContent}</AuthSessionProvider>;
 }

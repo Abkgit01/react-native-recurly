@@ -10,7 +10,7 @@ import {
 } from "@/components/ElectionUI";
 import { currentAgent } from "@/assets/constants/data";
 import { Redirect, useRouter } from "expo-router";
-import { useAuth } from "@clerk/expo";
+import { useAuthSession } from "@/lib/authSession";
 import { styled } from "nativewind";
 import { useMemo, useState } from "react";
 import { Alert, Pressable, ScrollView, Text, View } from "react-native";
@@ -27,7 +27,7 @@ const consentLabels = [
 
 export default function KYCSubmissionScreen() {
   const router = useRouter();
-  const { isLoaded, isSignedIn } = useAuth();
+  const { isLoaded, isSignedIn } = useAuthSession();
   const [phone, setPhone] = useState(currentAgent.phone);
   const [voterNumber, setVoterNumber] = useState("PVC-TEST-AD-SG-KES-0001");
   const [stateName, setStateName] = useState("ADAMAWA");

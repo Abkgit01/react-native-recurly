@@ -10,6 +10,7 @@ declare global {
   interface TabIconProps {
     focused: boolean;
     icon: ImageSourcePropType;
+    name?: string;
   }
 
   type UserRole = "Field Agent" | "Admin / Reviewer" | "Public Results";

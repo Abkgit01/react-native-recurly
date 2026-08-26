@@ -1,4 +1,5 @@
-import { useSignIn } from "@clerk/expo";
+import { login } from "@/lib/authApi";
+import { useAuthSession } from "@/lib/authSession";
 import { Link, useRouter } from "expo-router";
 import { styled } from "nativewind";
 import { useState } from "react";
@@ -17,41 +18,29 @@ const SafeAreaView = styled(RNSafeAreaView);
 
 const SignIn = () => {
   const router = useRouter();
-  const { fetchStatus, signIn } = useSignIn();
+  const { saveLoginSession } = useAuthSession();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const canSubmit =
-    Boolean(identifier.trim() && password.trim()) &&
-    !isSubmitting &&
-    fetchStatus !== "fetching";
+    Boolean(identifier.trim() && password.trim()) && !isSubmitting;
 
   const handleSignIn = async () => {
-    if (!signIn || !canSubmit) return;
+    if (!canSubmit) return;
 
     setIsSubmitting(true);
     setErrorMessage("");
 
     try {
-      const { error } = await signIn.create({
-        identifier: identifier.trim(),
+      const session = await login({
+        userNameOrEmail: identifier.trim(),
         password,
       });
 
-      if (error) {
-        setErrorMessage(error.message);
-        return;
-      }
-
-      if (signIn.status === "complete" && signIn.createdSessionId) {
-        await signIn.finalize();
-        router.replace("/(tabs)");
-        return;
-      }
-
-      router.push("./otp");
+      await saveLoginSession(session);
+      router.replace("/(tabs)");
     } catch (error) {
       setErrorMessage(
         error instanceof Error ? error.message : "Unable to sign in right now.",
@@ -60,8 +49,6 @@ const SignIn = () => {
       setIsSubmitting(false);
     }
   };
-
-  if (!signIn) return null;
 
   return (
     <SafeAreaView className="auth-safe-area">
@@ -96,14 +83,14 @@ const SignIn = () => {
           <View className="auth-card">
             <View className="auth-form">
               <View className="auth-field">
-                <Text className="auth-label">Phone or email</Text>
+                <Text className="auth-label">Email</Text>
                 <TextInput
                   className="auth-input"
                   autoCapitalize="none"
                   autoComplete="email"
                   keyboardType="email-address"
                   onChangeText={setIdentifier}
-                  placeholder="08133811722"
+                  placeholder="agent@example.com"
                   placeholderTextColor="rgba(0, 0, 0, 0.4)"
                   value={identifier}
                 />

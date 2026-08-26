@@ -10,7 +10,7 @@ import {
 } from "@/components/ElectionUI";
 import { assignedPollingUnit, currentElection } from "@/assets/constants/data";
 import { Redirect, useRouter } from "expo-router";
-import { useAuth } from "@clerk/expo";
+import { useAuthSession } from "@/lib/authSession";
 import { styled } from "nativewind";
 import { useState } from "react";
 import { Alert, ScrollView, Text, View } from "react-native";
@@ -20,7 +20,7 @@ const SafeAreaView = styled(RNSafeAreaView);
 
 export default function IncidentReportScreen() {
   const router = useRouter();
-  const { isLoaded, isSignedIn } = useAuth();
+  const { isLoaded, isSignedIn } = useAuthSession();
   const [incidentType, setIncidentType] = useState("Network outage");
   const [description, setDescription] = useState("");
   const [evidenceRef, setEvidenceRef] = useState("");

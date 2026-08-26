@@ -1,4 +1,4 @@
-import { useSignUp } from "@clerk/expo";
+import { registerAgent } from "@/lib/authApi";
 import { Link, useRouter } from "expo-router";
 import { styled } from "nativewind";
 import { useState } from "react";
@@ -17,44 +17,69 @@ const SafeAreaView = styled(RNSafeAreaView);
 
 const SignUp = () => {
   const router = useRouter();
-  const { fetchStatus, signUp } = useSignUp();
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [emailAddress, setEmailAddress] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [password, setPassword] = useState("");
-  const [code, setCode] = useState("");
-  const [pendingVerification, setPendingVerification] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [acceptTerms, setAcceptTerms] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const canCreate =
-    Boolean(emailAddress.trim() && password.length >= 8) &&
-    !isSubmitting &&
-    fetchStatus !== "fetching";
-  const canVerify =
-    code.trim().length >= 6 && !isSubmitting && fetchStatus !== "fetching";
+    Boolean(
+      firstName.trim() &&
+        lastName.trim() &&
+        emailAddress.trim() &&
+        phoneNumber.trim() &&
+        password.length >= 8 &&
+        confirmPassword &&
+        acceptTerms,
+    ) && !isSubmitting;
+
+  const validateForm = () => {
+    if (!firstName.trim()) return "First name is required.";
+    if (!lastName.trim()) return "Last name is required.";
+    if (!emailAddress.trim()) return "Email is required.";
+    if (!phoneNumber.trim()) return "Phone number is required.";
+    if (password.length < 8) return "Password must be at least 8 characters.";
+    if (password !== confirmPassword) return "Passwords do not match.";
+    if (!acceptTerms) return "You must accept the Terms and Privacy Policy.";
+    return "";
+  };
 
   const handleSignUp = async () => {
-    if (!signUp || !canCreate) return;
+    if (!canCreate) return;
+
+    const validationError = validateForm();
+    if (validationError) {
+      setErrorMessage(validationError);
+      return;
+    }
+
     setIsSubmitting(true);
     setErrorMessage("");
 
     try {
-      const { error } = await signUp.create({
-        emailAddress: emailAddress.trim(),
+      const registration = await registerAgent({
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: emailAddress.trim(),
+        phoneNumber: phoneNumber.trim(),
         password,
+        confirmPassword,
       });
 
-      if (error) {
-        setErrorMessage(error.message);
+      if (registration.requiresPhoneVerification) {
+        router.push({
+          pathname: "/(auth)/otp",
+          params: { phoneNumber: registration.phoneNumber },
+        });
         return;
       }
 
-      const { error: sendCodeError } = await signUp.verifications.sendEmailCode();
-      if (sendCodeError) {
-        setErrorMessage(sendCodeError.message);
-        return;
-      }
-
-      setPendingVerification(true);
+      router.replace("/(auth)/sign-in");
     } catch (error) {
       setErrorMessage(
         error instanceof Error ? error.message : "Unable to register right now.",
@@ -63,39 +88,6 @@ const SignUp = () => {
       setIsSubmitting(false);
     }
   };
-
-  const handleVerify = async () => {
-    if (!signUp || !canVerify) return;
-    setIsSubmitting(true);
-    setErrorMessage("");
-
-    try {
-      const { error } = await signUp.verifications.verifyEmailCode({
-        code: code.trim(),
-      });
-
-      if (error) {
-        setErrorMessage(error.message);
-        return;
-      }
-
-      if (signUp.status === "complete" && signUp.createdSessionId) {
-        await signUp.finalize();
-        router.replace("/(tabs)");
-        return;
-      }
-
-      setErrorMessage("Verification needs another step before registration can finish.");
-    } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : "Unable to verify right now.",
-      );
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  if (!signUp) return null;
 
   return (
     <SafeAreaView className="auth-safe-area">
@@ -116,88 +108,127 @@ const SignUp = () => {
               </View>
               <Text className="auth-wordmark">ElectionWatch</Text>
             </View>
-            <Text className="auth-title">
-              {pendingVerification ? "Verify your email" : "Register"}
-            </Text>
+            <Text className="auth-title">Register</Text>
             <Text className="auth-subtitle">
-              {pendingVerification
-                ? "Enter the six-digit code sent to your inbox."
-                : "Create an election monitoring account."}
+              Create an election monitoring account.
             </Text>
           </View>
 
           <View className="auth-card">
             <View className="auth-form">
-              {pendingVerification ? (
-                <View className="auth-field">
-                  <Text className="auth-label">Verification code</Text>
-                  <TextInput
-                    className="auth-input"
-                    autoComplete="one-time-code"
-                    keyboardType="number-pad"
-                    maxLength={6}
-                    onChangeText={setCode}
-                    placeholder="Enter 6-digit code"
-                    placeholderTextColor="rgba(0, 0, 0, 0.4)"
-                    value={code}
-                  />
+              <View className="flex-row gap-3">
+                <View className="flex-1">
+                  <View className="auth-field">
+                    <Text className="auth-label">First Name</Text>
+                    <TextInput
+                      className="auth-input"
+                      autoComplete="given-name"
+                      onChangeText={setFirstName}
+                      placeholder="First name"
+                      placeholderTextColor="rgba(0, 0, 0, 0.4)"
+                      value={firstName}
+                    />
+                  </View>
                 </View>
-              ) : (
-                <>
+                <View className="flex-1">
                   <View className="auth-field">
-                    <Text className="auth-label">Email address</Text>
+                    <Text className="auth-label">Last Name</Text>
                     <TextInput
                       className="auth-input"
-                      autoCapitalize="none"
-                      autoComplete="email"
-                      keyboardType="email-address"
-                      onChangeText={setEmailAddress}
-                      placeholder="name@example.com"
+                      autoComplete="family-name"
+                      onChangeText={setLastName}
+                      placeholder="Last name"
                       placeholderTextColor="rgba(0, 0, 0, 0.4)"
-                      value={emailAddress}
+                      value={lastName}
                     />
                   </View>
-                  <View className="auth-field">
-                    <Text className="auth-label">Password</Text>
-                    <TextInput
-                      className="auth-input"
-                      autoComplete="password-new"
-                      onChangeText={setPassword}
-                      placeholder="Minimum 8 characters"
-                      placeholderTextColor="rgba(0, 0, 0, 0.4)"
-                      secureTextEntry
-                      value={password}
-                    />
-                  </View>
-                </>
-              )}
+                </View>
+              </View>
+
+              <View className="auth-field">
+                <Text className="auth-label">Email address</Text>
+                <TextInput
+                  className="auth-input"
+                  autoCapitalize="none"
+                  autoComplete="email"
+                  keyboardType="email-address"
+                  onChangeText={setEmailAddress}
+                  placeholder="name@example.com"
+                  placeholderTextColor="rgba(0, 0, 0, 0.4)"
+                  value={emailAddress}
+                />
+              </View>
+
+              <View className="auth-field">
+                <Text className="auth-label">Phone Number</Text>
+                <TextInput
+                  className="auth-input"
+                  autoComplete="tel"
+                  keyboardType="phone-pad"
+                  onChangeText={setPhoneNumber}
+                  placeholder="08133811722"
+                  placeholderTextColor="rgba(0, 0, 0, 0.4)"
+                  value={phoneNumber}
+                />
+              </View>
+
+              <View className="auth-field">
+                <Text className="auth-label">Password</Text>
+                <TextInput
+                  className="auth-input"
+                  autoComplete="password-new"
+                  onChangeText={setPassword}
+                  placeholder="Minimum 8 characters"
+                  placeholderTextColor="rgba(0, 0, 0, 0.4)"
+                  secureTextEntry
+                  value={password}
+                />
+              </View>
+
+              <View className="auth-field">
+                <Text className="auth-label">Confirm Password</Text>
+                <TextInput
+                  className="auth-input"
+                  autoComplete="password-new"
+                  onChangeText={setConfirmPassword}
+                  placeholder="Re-enter password"
+                  placeholderTextColor="rgba(0, 0, 0, 0.4)"
+                  secureTextEntry
+                  value={confirmPassword}
+                />
+              </View>
+
+              <Pressable
+                className="flex-row items-start gap-3 py-1"
+                onPress={() => setAcceptTerms((current) => !current)}
+              >
+                <View
+                  className={`mt-0.5 size-5 rounded border ${
+                    acceptTerms ? "border-accent bg-accent" : "border-border bg-card"
+                  }`}
+                >
+                  {acceptTerms ? (
+                    <Text className="text-center text-xs font-sans-bold text-white">
+                      ✓
+                    </Text>
+                  ) : null}
+                </View>
+                <Text className="min-w-0 flex-1 text-sm font-sans-medium text-primary">
+                  I accept the Terms and Privacy Policy.
+                </Text>
+              </Pressable>
 
               {errorMessage ? <Text className="auth-error">{errorMessage}</Text> : null}
 
               <Pressable
-                className={`auth-button ${
-                  pendingVerification
-                    ? !canVerify
-                      ? "auth-button-disabled"
-                      : ""
-                    : !canCreate
-                      ? "auth-button-disabled"
-                      : ""
-                }`}
-                disabled={pendingVerification ? !canVerify : !canCreate}
-                onPress={pendingVerification ? handleVerify : handleSignUp}
+                className={`auth-button ${!canCreate ? "auth-button-disabled" : ""}`}
+                disabled={!canCreate}
+                onPress={handleSignUp}
               >
                 <Text className="auth-button-text">
-                  {isSubmitting
-                    ? pendingVerification
-                      ? "Verifying..."
-                      : "Registering..."
-                    : pendingVerification
-                      ? "Verify"
-                      : "Register"}
+                  {isSubmitting ? "Registering..." : "Register"}
                 </Text>
               </Pressable>
-              <View nativeID="clerk-captcha" />
             </View>
           </View>
 

@@ -1,6 +1,6 @@
-import { useAuth } from "@clerk/expo";
 import { tabs } from "@/assets/constants/data";
 import { colors, components } from "@/assets/constants/theme";
+import { useAuthSession } from "@/lib/authSession";
 import { clsx } from "clsx";
 import { Redirect, Tabs } from "expo-router";
 import { Image, View } from "react-native";
@@ -9,17 +9,24 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 const tabBar = components.tabBar;
 
 const TabLayout = () => {
-  const { isLoaded, isSignedIn } = useAuth();
+  const { isLoaded, isSignedIn } = useAuthSession();
   const insets = useSafeAreaInsets();
 
   if (!isLoaded) return null;
   if (!isSignedIn) return <Redirect href="/(auth)/sign-in" />;
 
-  const TabIcon = ({ focused, icon }: TabIconProps) => {
+  const TabIcon = ({ focused, icon, name }: TabIconProps) => {
+    const isCaptureTab = name === "capture";
+
     return (
       <View className="tabs-icon">
         <View className={clsx("tabs-pill", focused && "tabs-active")}>
-          <Image source={icon} resizeMode="contain" className="tabs-glyph" />
+          <Image
+            source={icon}
+            resizeMode="contain"
+            className="tabs-glyph"
+            style={isCaptureTab ? { tintColor: "#ffffff" } : undefined}
+          />
         </View>
       </View>
     );
@@ -64,7 +71,7 @@ const TabLayout = () => {
           options={{
             title: tab.title,
             tabBarIcon: ({ focused }) => (
-              <TabIcon focused={focused} icon={tab.icon} />
+              <TabIcon focused={focused} icon={tab.icon} name={tab.name} />
             ),
           }}
         />
