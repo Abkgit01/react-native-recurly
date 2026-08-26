@@ -1,4 +1,4 @@
-import { login } from "@/lib/authApi";
+import { getAgentDashboard, login } from "@/lib/authApi";
 import { useAuthSession } from "@/lib/authSession";
 import { Link, useRouter } from "expo-router";
 import { styled } from "nativewind";
@@ -18,7 +18,7 @@ const SafeAreaView = styled(RNSafeAreaView);
 
 const SignIn = () => {
   const router = useRouter();
-  const { saveLoginSession } = useAuthSession();
+  const { saveLoginSession, savePendingVerification } = useAuthSession();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
@@ -40,6 +40,22 @@ const SignIn = () => {
       });
 
       await saveLoginSession(session);
+      if (!session.phoneNumberConfirmed && session.phoneNumber) {
+        await savePendingVerification({
+          email: session.email,
+          fullName: session.fullName,
+          phoneNumber: session.phoneNumber,
+        });
+        router.replace("/(auth)/otp");
+        return;
+      }
+
+      const dashboard = await getAgentDashboard(session.token).catch(() => null);
+      if (dashboard && !dashboard.kycApproved) {
+        router.replace("/kyc-submission");
+        return;
+      }
+
       router.replace("/(tabs)");
     } catch (error) {
       setErrorMessage(
@@ -125,7 +141,7 @@ const SignIn = () => {
 
           <View className="auth-link-row">
             <Text className="auth-link-copy">Forgot password?</Text>
-            <Link href="./otp" asChild>
+            <Link href="/(auth)/otp" asChild>
               <Pressable>
                 <Text className="auth-link">Continue with OTP</Text>
               </Pressable>
@@ -142,7 +158,7 @@ const SignIn = () => {
           </View>
 
           <View className="auth-link-row">
-            <Link href="../public-results" asChild>
+            <Link href="/public-results" asChild>
               <Pressable>
                 <Text className="auth-link">View Public Results</Text>
               </Pressable>

@@ -26,16 +26,30 @@ type StoredSession = {
   user: AuthUser;
 };
 
+type PendingVerification = {
+  fullName: string;
+  email: string;
+  phoneNumber: string;
+};
+
 type AuthSessionContextValue = {
   isLoaded: boolean;
   isSignedIn: boolean;
   token: string | null;
   user: AuthUser | null;
+  pendingVerification: PendingVerification | null;
+  pendingPassword: string | null;
   saveLoginSession: (loginResponse: LoginResponse) => Promise<void>;
+  savePendingVerification: (
+    pending: PendingVerification,
+    password?: string,
+  ) => Promise<void>;
+  clearPendingVerification: () => Promise<void>;
   clearAuthSession: () => Promise<void>;
 };
 
 const SESSION_STORAGE_KEY = "electionapp.auth.session";
+const PENDING_VERIFICATION_STORAGE_KEY = "electionapp.auth.pendingVerification";
 const AuthSessionContext = createContext<AuthSessionContextValue | null>(null);
 
 const toStoredSession = (loginResponse: LoginResponse): StoredSession => ({
@@ -53,6 +67,9 @@ const toStoredSession = (loginResponse: LoginResponse): StoredSession => ({
 
 export const AuthSessionProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<StoredSession | null>(null);
+  const [pendingVerification, setPendingVerification] =
+    useState<PendingVerification | null>(null);
+  const [pendingPassword, setPendingPassword] = useState<string | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
@@ -61,10 +78,21 @@ export const AuthSessionProvider = ({ children }: { children: ReactNode }) => {
     const loadSession = async () => {
       try {
         const value = await SecureStore.getItemAsync(SESSION_STORAGE_KEY);
-        if (!mounted || !value) return;
-        setSession(JSON.parse(value) as StoredSession);
+        const pendingValue = await SecureStore.getItemAsync(
+          PENDING_VERIFICATION_STORAGE_KEY,
+        );
+        if (!mounted) return;
+        if (value) setSession(JSON.parse(value) as StoredSession);
+        if (pendingValue) {
+          setPendingVerification(
+            JSON.parse(pendingValue) as PendingVerification,
+          );
+        }
       } catch {
-        if (mounted) setSession(null);
+        if (mounted) {
+          setSession(null);
+          setPendingVerification(null);
+        }
       } finally {
         if (mounted) setIsLoaded(true);
       }
@@ -86,6 +114,24 @@ export const AuthSessionProvider = ({ children }: { children: ReactNode }) => {
     setSession(nextSession);
   }, []);
 
+  const savePendingVerification = useCallback(
+    async (pending: PendingVerification, password?: string) => {
+      await SecureStore.setItemAsync(
+        PENDING_VERIFICATION_STORAGE_KEY,
+        JSON.stringify(pending),
+      );
+      setPendingVerification(pending);
+      setPendingPassword(password ?? null);
+    },
+    [],
+  );
+
+  const clearPendingVerification = useCallback(async () => {
+    await SecureStore.deleteItemAsync(PENDING_VERIFICATION_STORAGE_KEY);
+    setPendingVerification(null);
+    setPendingPassword(null);
+  }, []);
+
   const clearAuthSession = useCallback(async () => {
     await SecureStore.deleteItemAsync(SESSION_STORAGE_KEY);
     setSession(null);
@@ -97,10 +143,23 @@ export const AuthSessionProvider = ({ children }: { children: ReactNode }) => {
       isSignedIn: Boolean(session?.token),
       token: session?.token ?? null,
       user: session?.user ?? null,
+      pendingVerification,
+      pendingPassword,
       saveLoginSession,
+      savePendingVerification,
+      clearPendingVerification,
       clearAuthSession,
     }),
-    [clearAuthSession, isLoaded, saveLoginSession, session],
+    [
+      clearAuthSession,
+      clearPendingVerification,
+      isLoaded,
+      pendingPassword,
+      pendingVerification,
+      saveLoginSession,
+      savePendingVerification,
+      session,
+    ],
   );
 
   return (

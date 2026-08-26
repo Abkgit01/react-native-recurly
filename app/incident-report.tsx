@@ -33,6 +33,10 @@ export default function IncidentReportScreen() {
   if (!isLoaded) return null;
   if (!isSignedIn) return <Redirect href="/(auth)/sign-in" />;
 
+  const goToProfile = () => {
+    router.replace("/(tabs)/profile");
+  };
+
   const submitIncident = () => {
     if (!isEligible) {
       Alert.alert("Not eligible", "No open election is configured for your verified polling unit.");
@@ -69,7 +73,7 @@ export default function IncidentReportScreen() {
               <Text className="text-sm font-sans-medium text-muted-foreground">
                 No open election is configured for your verified polling unit.
               </Text>
-              <SecondaryButton label="Back to Profile" onPress={() => router.back()} />
+              <SecondaryButton label="Back to Profile" onPress={goToProfile} />
             </Card>
           ) : null}
 
@@ -83,7 +87,7 @@ export default function IncidentReportScreen() {
                 The incident is saved locally and will sync when connectivity is available.
               </Text>
               <InfoRow label="Local reference" value={localReference} />
-              <PrimaryButton label="Back to Profile" onPress={() => router.back()} />
+              <PrimaryButton label="Back to Profile" onPress={goToProfile} />
             </Card>
           ) : null}
 
@@ -145,7 +149,7 @@ export default function IncidentReportScreen() {
 
               <View className="flex-row gap-3">
                 <View className="flex-1">
-                  <SecondaryButton label="Back" onPress={() => router.back()} />
+                  <SecondaryButton label="Back" onPress={goToProfile} />
                 </View>
                 <View className="flex-1">
                   <PrimaryButton label="Submit Incident" disabled={!canSubmit} onPress={submitIncident} />

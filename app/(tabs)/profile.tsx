@@ -86,11 +86,11 @@ export default function Profile() {
             <Text className="text-lg font-sans-bold text-primary">Agent Actions</Text>
             <SecondaryButton
               label="Submit KYC"
-              onPress={() => router.push("../kyc-submission")}
+              onPress={() => router.push("/kyc-submission")}
             />
             <SecondaryButton
               label="Report Incident"
-              onPress={() => router.push("../incident-report")}
+              onPress={() => router.push("/incident-report")}
             />
           </Card>
 

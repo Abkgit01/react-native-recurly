@@ -65,16 +65,20 @@ export const SecondaryButton = ({
   label,
   onPress,
   danger,
+  disabled,
 }: {
   label: string;
   onPress?: () => void;
   danger?: boolean;
+  disabled?: boolean;
 }) => (
   <Pressable
     className={clsx(
       "items-center rounded-xl border px-4 py-3",
       danger ? "border-destructive/30 bg-destructive/5" : "border-accent/30 bg-accent/10",
+      disabled && "opacity-50",
     )}
+    disabled={disabled}
     onPress={onPress}
   >
     <Text className={clsx("text-sm font-sans-bold", danger ? "text-destructive" : "text-accent")}>

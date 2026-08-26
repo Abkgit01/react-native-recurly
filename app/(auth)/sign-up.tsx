@@ -1,4 +1,5 @@
 import { registerAgent } from "@/lib/authApi";
+import { useAuthSession } from "@/lib/authSession";
 import { Link, useRouter } from "expo-router";
 import { styled } from "nativewind";
 import { useState } from "react";
@@ -17,6 +18,7 @@ const SafeAreaView = styled(RNSafeAreaView);
 
 const SignUp = () => {
   const router = useRouter();
+  const { savePendingVerification } = useAuthSession();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [emailAddress, setEmailAddress] = useState("");
@@ -42,6 +44,9 @@ const SignUp = () => {
     if (!firstName.trim()) return "First name is required.";
     if (!lastName.trim()) return "Last name is required.";
     if (!emailAddress.trim()) return "Email is required.";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress.trim())) {
+      return "Enter a valid email address.";
+    }
     if (!phoneNumber.trim()) return "Phone number is required.";
     if (password.length < 8) return "Password must be at least 8 characters.";
     if (password !== confirmPassword) return "Passwords do not match.";
@@ -72,10 +77,12 @@ const SignUp = () => {
       });
 
       if (registration.requiresPhoneVerification) {
-        router.push({
-          pathname: "/(auth)/otp",
-          params: { phoneNumber: registration.phoneNumber },
-        });
+        await savePendingVerification({
+          email: registration.email,
+          fullName: registration.fullName,
+          phoneNumber: registration.phoneNumber,
+        }, password);
+        router.push("/(auth)/otp");
         return;
       }
 

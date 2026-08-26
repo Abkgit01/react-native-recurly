@@ -59,7 +59,15 @@
         }
       ],
       "expo-secure-store",
-      "expo-localization"
+      "expo-localization",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "ElectionWatch uses your photo library to upload PVC images for KYC.",
+          "cameraPermission": "ElectionWatch uses your camera to capture PVC and selfie images for KYC.",
+          "microphonePermission": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
