@@ -1,6 +1,6 @@
-import { getAgentDashboard, login } from "@/lib/authApi";
+import { login } from "@/lib/authApi";
 import { useAuthSession } from "@/lib/authSession";
-import { Link, useRouter } from "expo-router";
+import { Link, Redirect, useRouter } from "expo-router";
 import { styled } from "nativewind";
 import { useState } from "react";
 import {
@@ -18,7 +18,12 @@ const SafeAreaView = styled(RNSafeAreaView);
 
 const SignIn = () => {
   const router = useRouter();
-  const { saveLoginSession, savePendingVerification } = useAuthSession();
+  const {
+    getPostAuthRoute,
+    isSignedIn,
+    saveLoginSession,
+    savePendingVerification,
+  } = useAuthSession();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
@@ -26,6 +31,8 @@ const SignIn = () => {
 
   const canSubmit =
     Boolean(identifier.trim() && password.trim()) && !isSubmitting;
+
+  if (isSignedIn) return <Redirect href={getPostAuthRoute()} />;
 
   const handleSignIn = async () => {
     if (!canSubmit) return;
@@ -39,7 +46,7 @@ const SignIn = () => {
         password,
       });
 
-      await saveLoginSession(session);
+      const nextRoute = await saveLoginSession(session);
       if (!session.phoneNumberConfirmed && session.phoneNumber) {
         await savePendingVerification({
           email: session.email,
@@ -50,13 +57,7 @@ const SignIn = () => {
         return;
       }
 
-      const dashboard = await getAgentDashboard(session.token).catch(() => null);
-      if (dashboard && !dashboard.kycApproved) {
-        router.replace("/kyc-submission");
-        return;
-      }
-
-      router.replace("/(tabs)");
+      router.replace(nextRoute);
     } catch (error) {
       setErrorMessage(
         error instanceof Error ? error.message : "Unable to sign in right now.",

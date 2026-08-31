@@ -1,4 +1,4 @@
-import { login, resendPhoneOtp, verifyPhone } from "@/lib/authApi";
+import { resendPhoneOtp, verifyPhone } from "@/lib/authApi";
 import { useAuthSession } from "@/lib/authSession";
 import { Link, useRouter } from "expo-router";
 import { styled } from "nativewind";
@@ -27,14 +27,11 @@ export default function OTPVerification() {
   const router = useRouter();
   const {
     isSignedIn,
-    pendingPassword,
     pendingVerification,
-    saveLoginSession,
     clearPendingVerification,
     user,
   } = useAuthSession();
   const phoneNumber = pendingVerification?.phoneNumber ?? user?.phoneNumber ?? "";
-  const email = pendingVerification?.email ?? user?.email ?? "";
   const [digits, setDigits] = useState(Array(OTP_LENGTH).fill(""));
   const [errorMessage, setErrorMessage] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
@@ -101,17 +98,6 @@ export default function OTPVerification() {
         otpCode: code,
       });
       setDigits(Array(OTP_LENGTH).fill(""));
-
-      if (pendingPassword && email) {
-        const session = await login({
-          userNameOrEmail: email,
-          password: pendingPassword,
-        });
-        await saveLoginSession(session);
-        await clearPendingVerification();
-        router.replace("/kyc-submission");
-        return;
-      }
 
       await clearPendingVerification();
       if (isSignedIn) {

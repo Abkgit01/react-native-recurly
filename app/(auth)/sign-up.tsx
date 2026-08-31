@@ -1,6 +1,6 @@
 import { registerAgent } from "@/lib/authApi";
 import { useAuthSession } from "@/lib/authSession";
-import { Link, useRouter } from "expo-router";
+import { Link, Redirect, useRouter } from "expo-router";
 import { styled } from "nativewind";
 import { useState } from "react";
 import {
@@ -18,7 +18,8 @@ const SafeAreaView = styled(RNSafeAreaView);
 
 const SignUp = () => {
   const router = useRouter();
-  const { savePendingVerification } = useAuthSession();
+  const { getPostAuthRoute, isSignedIn, savePendingVerification } =
+    useAuthSession();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [emailAddress, setEmailAddress] = useState("");
@@ -39,6 +40,8 @@ const SignUp = () => {
         confirmPassword &&
         acceptTerms,
     ) && !isSubmitting;
+
+  if (isSignedIn) return <Redirect href={getPostAuthRoute()} />;
 
   const validateForm = () => {
     if (!firstName.trim()) return "First name is required.";
@@ -81,7 +84,7 @@ const SignUp = () => {
           email: registration.email,
           fullName: registration.fullName,
           phoneNumber: registration.phoneNumber,
-        }, password);
+        });
         router.push("/(auth)/otp");
         return;
       }

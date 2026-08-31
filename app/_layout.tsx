@@ -1,5 +1,5 @@
 import "@/global.css";
-import { AuthSessionProvider } from "@/lib/authSession";
+import { AuthSessionProvider, useAuthSession } from "@/lib/authSession";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -21,6 +21,42 @@ const PostHogAppEvents = ({ children }: { children: ReactNode }) => {
   }, [posthog]);
 
   return children;
+};
+
+const StartupScreen = () => (
+  <View className="flex-1 items-center justify-center bg-primary px-8">
+    <View className="size-24 items-center justify-center rounded-3xl border border-gold/60 bg-white/10">
+      <Text className="text-5xl font-sans-extrabold text-white">OK</Text>
+    </View>
+    <Text className="mt-6 text-center text-4xl font-sans-extrabold text-white">
+      ElectionWatch
+    </Text>
+    <Text className="mt-2 text-center text-base font-sans-semibold text-white/75">
+      Restoring session...
+    </Text>
+  </View>
+);
+
+const RootNavigator = () => {
+  const { status } = useAuthSession();
+  const isInitializing = status === "initializing";
+  const isAuthenticated = status === "authenticated";
+
+  if (isInitializing) return <StartupScreen />;
+
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="index" />
+      <Stack.Screen name="public-results" />
+      <Stack.Screen name="(auth)" />
+      <Stack.Protected guard={isAuthenticated}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="kyc-submission" />
+        <Stack.Screen name="incident-report" />
+        <Stack.Screen name="onboarding" />
+      </Stack.Protected>
+    </Stack>
+  );
 };
 
 export default function RootLayout() {
@@ -56,7 +92,7 @@ export default function RootLayout() {
 
     if (!fontsLoaded) return null;
 
-    return <Stack screenOptions={{ headerShown: false }} />;
+    return <RootNavigator />;
   })();
 
   const appContent = postHogApiKey ? (

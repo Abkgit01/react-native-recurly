@@ -9,8 +9,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 const tabBar = components.tabBar;
 
 const TabLayout = () => {
-  const { isLoaded, isSignedIn } = useAuthSession();
+  const { isLoaded, isSignedIn, restoredDashboard } = useAuthSession();
   const insets = useSafeAreaInsets();
+  const canOpenCapture = Boolean(restoredDashboard?.kycApproved);
 
   if (!isLoaded) return null;
   if (!isSignedIn) return <Redirect href="/(auth)/sign-in" />;
@@ -64,18 +65,28 @@ const TabLayout = () => {
         },
       }}
     >
-      {tabs.map((tab) => (
-        <Tabs.Screen
-          key={tab.name}
-          name={tab.name}
-          options={{
-            title: tab.title,
-            tabBarIcon: ({ focused }) => (
-              <TabIcon focused={focused} icon={tab.icon} name={tab.name} />
-            ),
-          }}
-        />
-      ))}
+      {tabs.map((tab) => {
+        const screen = (
+          <Tabs.Screen
+            key={tab.name}
+            name={tab.name}
+            options={{
+              title: tab.title,
+              tabBarIcon: ({ focused }) => (
+                <TabIcon focused={focused} icon={tab.icon} name={tab.name} />
+              ),
+            }}
+          />
+        );
+
+        if (tab.name !== "capture") return screen;
+
+        return (
+          <Tabs.Protected key={tab.name} guard={canOpenCapture}>
+            {screen}
+          </Tabs.Protected>
+        );
+      })}
     </Tabs>
   );
 };

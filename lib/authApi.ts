@@ -7,6 +7,24 @@ type ApiResponse<T> = {
   Data?: T | null;
 };
 
+export class ApiRequestError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiRequestError";
+    this.status = status;
+  }
+}
+
+let unauthorizedHandler: (() => void | Promise<void>) | null = null;
+
+export const setUnauthorizedHandler = (
+  handler: (() => void | Promise<void>) | null,
+) => {
+  unauthorizedHandler = handler;
+};
+
 export type RegisterAgentRequest = {
   firstName: string;
   lastName: string;
@@ -348,7 +366,7 @@ const unwrapApiResponse = async <T>(response: Response): Promise<T> => {
   const data = body?.data ?? body?.Data;
 
   if (!response.ok || !success || data === null || data === undefined) {
-    throw new Error(toErrorMessage(response, body));
+    throw new ApiRequestError(toErrorMessage(response, body), response.status);
   }
 
   return data;
@@ -381,6 +399,10 @@ const apiRequest = async <T>(
       "Unable to reach ElectionApp API. Check your internet connection and try again.",
     );
   });
+
+  if (response.status === 401 && token) {
+    await unauthorizedHandler?.();
+  }
 
   return unwrapApiResponse<T>(response);
 };
