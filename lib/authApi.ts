@@ -9,13 +9,47 @@ type ApiResponse<T> = {
 
 export class ApiRequestError extends Error {
   status: number;
+  category: ApiErrorCategory;
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, category = categoryFromStatus(status)) {
     super(message);
     this.name = "ApiRequestError";
     this.status = status;
+    this.category = category;
   }
 }
+
+export type ApiErrorCategory =
+  | "authentication"
+  | "authorization"
+  | "network"
+  | "timeout"
+  | "server"
+  | "validation"
+  | "conflict"
+  | "unknown";
+
+export const categoryFromStatus = (status: number): ApiErrorCategory => {
+  if (status === 401) return "authentication";
+  if (status === 403) return "authorization";
+  if (status === 400 || status === 422) return "validation";
+  if (status === 409) return "conflict";
+  if (status >= 500 && status <= 599) return "server";
+  return "unknown";
+};
+
+export const classifyApiError = (error: unknown): ApiErrorCategory => {
+  if (error instanceof ApiRequestError) return error.category;
+  return "unknown";
+};
+
+export const isTransientApiError = (error: unknown) => {
+  const category = classifyApiError(error);
+  return category === "network" || category === "timeout" || category === "server";
+};
+
+export const isAuthenticationApiError = (error: unknown) =>
+  classifyApiError(error) === "authentication";
 
 let unauthorizedHandler: (() => void | Promise<void>) | null = null;
 
@@ -425,8 +459,10 @@ const apiRequest = async <T>(
     headers,
     body,
   }).catch(() => {
-    throw new Error(
+    throw new ApiRequestError(
       "Unable to reach ElectionApp API. Check your internet connection and try again.",
+      0,
+      "network",
     );
   });
 

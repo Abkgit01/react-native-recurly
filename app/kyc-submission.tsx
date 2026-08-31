@@ -10,13 +10,11 @@ import {
 } from "@/components/ElectionUI";
 import {
   analyzePvcImage,
-  getAgentDashboard,
   getLgas,
   getPollingUnits,
   getStates,
   getWards,
   submitKyc,
-  type AgentDashboardResponse,
   type AnalyzePvcImageResult,
   type GeographyOption,
   type KycImageAsset,
@@ -168,9 +166,15 @@ const ImagePickerRow = ({
 
 export default function KYCSubmissionScreen() {
   const router = useRouter();
-  const { isLoaded, isSignedIn, token, user } = useAuthSession();
-  const [dashboard, setDashboard] = useState<AgentDashboardResponse | null>(null);
-  const [dashboardError, setDashboardError] = useState("");
+  const {
+    dashboard,
+    dashboardError,
+    isLoaded,
+    isSignedIn,
+    refreshDashboard,
+    token,
+    user,
+  } = useAuthSession();
   const [voterNumber, setVoterNumber] = useState("");
   const [selectedState, setSelectedState] = useState<GeographyOption | null>(null);
   const [selectedLga, setSelectedLga] = useState<GeographyOption | null>(null);
@@ -277,11 +281,10 @@ export default function KYCSubmissionScreen() {
 
     const loadDashboard = async () => {
       try {
-        const nextDashboard = await getAgentDashboard(token);
-        if (active) setDashboard(nextDashboard);
+        await refreshDashboard({ force: true });
       } catch (error) {
         if (active) {
-          setDashboardError(
+          setErrorMessage(
             error instanceof Error
               ? error.message
               : "Unable to load KYC status right now.",
@@ -294,7 +297,7 @@ export default function KYCSubmissionScreen() {
     return () => {
       active = false;
     };
-  }, [token]);
+  }, [refreshDashboard, token]);
 
   useEffect(() => {
     let active = true;
@@ -578,8 +581,7 @@ export default function KYCSubmissionScreen() {
       });
       setSubmitted(response.submitted);
       setStatusMessage(response.message || "KYC submitted for review.");
-      const nextDashboard = await getAgentDashboard(token).catch(() => null);
-      if (nextDashboard) setDashboard(nextDashboard);
+      await refreshDashboard({ force: true }).catch(() => null);
     } catch (error) {
       setErrorMessage(
         error instanceof Error ? error.message : "Unable to submit KYC right now.",

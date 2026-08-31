@@ -8,7 +8,6 @@ import {
   StatusBadge,
 } from "@/components/ElectionUI";
 import {
-  getAgentDashboard,
   getOpenResultCaptureOptions,
   type AgentDashboardResponse,
   type OpenResultCaptureOptionsResponse,
@@ -43,9 +42,15 @@ const kycStatusVariant = (dashboard?: AgentDashboardResponse | null) => {
 
 export default function Home() {
   const router = useRouter();
-  const { token, user } = useAuthSession();
+  const {
+    dashboard,
+    dashboardError,
+    isDegraded,
+    refreshDashboard: refreshSharedDashboard,
+    token,
+    user,
+  } = useAuthSession();
   const submissions = useElectionSubmissions();
-  const [dashboard, setDashboard] = useState<AgentDashboardResponse | null>(null);
   const [captureOptions, setCaptureOptions] =
     useState<OpenResultCaptureOptionsResponse | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
@@ -64,20 +69,20 @@ export default function Home() {
     [captureOptions],
   );
   const displayName = dashboard?.fullName || user?.fullName || user?.email || "Agent";
+  const syncError = dashboardError || errorMessage;
 
-  const loadDashboard = useCallback(async () => {
+  const loadDashboard = useCallback(async (force = false) => {
     if (!token) return;
     setErrorMessage("");
-    const nextDashboard = await getAgentDashboard(token);
-    setDashboard(nextDashboard);
+    const nextDashboard = await refreshSharedDashboard({ force });
 
-    if (nextDashboard.startCaptureEnabled || nextDashboard.kycApproved) {
+    if (nextDashboard?.startCaptureEnabled || nextDashboard?.kycApproved) {
       const options = await getOpenResultCaptureOptions(token).catch(() => null);
       setCaptureOptions(options);
     } else {
       setCaptureOptions(null);
     }
-  }, [token]);
+  }, [refreshSharedDashboard, token]);
 
   useEffect(() => {
     let active = true;
@@ -104,7 +109,7 @@ export default function Home() {
   const refreshDashboard = async () => {
     setIsRefreshing(true);
     try {
-      await loadDashboard();
+          await loadDashboard(true);
     } catch (error) {
       setErrorMessage(
         error instanceof Error ? error.message : "Dashboard could not be loaded.",
@@ -174,13 +179,13 @@ export default function Home() {
             </Card>
           ) : null}
 
-          {errorMessage ? (
+          {syncError ? (
             <Card className="gap-3 border-destructive/30 bg-destructive/5">
               <Text className="text-base font-sans-bold text-destructive">
-                Dashboard unavailable
+                {isDegraded ? "Dashboard offline" : "Dashboard unavailable"}
               </Text>
               <Text className="text-sm font-sans-medium text-muted-foreground">
-                {errorMessage}
+                {syncError}
               </Text>
               <PrimaryButton label="Retry" onPress={refreshDashboard} />
             </Card>

@@ -28,7 +28,7 @@ export default function OTPVerification() {
   const {
     isSignedIn,
     pendingVerification,
-    clearPendingVerification,
+    confirmPhoneNumber,
     user,
   } = useAuthSession();
   const phoneNumber = pendingVerification?.phoneNumber ?? user?.phoneNumber ?? "";
@@ -99,9 +99,9 @@ export default function OTPVerification() {
       });
       setDigits(Array(OTP_LENGTH).fill(""));
 
-      await clearPendingVerification();
       if (isSignedIn) {
-        router.replace("/kyc-submission");
+        const nextRoute = await confirmPhoneNumber();
+        router.replace(nextRoute);
         return;
       }
 

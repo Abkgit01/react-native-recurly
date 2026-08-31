@@ -8,7 +8,6 @@ import {
   StatusBadge,
 } from "@/components/ElectionUI";
 import {
-  getAgentDashboard,
   type AgentDashboardResponse,
 } from "@/lib/authApi";
 import Constants from "expo-constants";
@@ -38,8 +37,14 @@ const kycStatusVariant = (dashboard?: AgentDashboardResponse | null) => {
 
 export default function Profile() {
   const router = useRouter();
-  const { clearAuthSession, token, user } = useAuthSession();
-  const [dashboard, setDashboard] = useState<AgentDashboardResponse | null>(null);
+  const {
+    clearAuthSession,
+    dashboard,
+    dashboardError,
+    refreshDashboard,
+    token,
+    user,
+  } = useAuthSession();
   const [errorMessage, setErrorMessage] = useState("");
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -47,9 +52,8 @@ export default function Profile() {
 
   const loadProfile = useCallback(async () => {
     if (!token) return;
-    const result = await getAgentDashboard(token);
-    setDashboard(result);
-  }, [token]);
+    await refreshDashboard({ force: true });
+  }, [refreshDashboard, token]);
 
   useEffect(() => {
     loadProfile().catch((error) => {
@@ -94,10 +98,10 @@ export default function Profile() {
         >
           <AppHeader title="Profile" subtitle="Account, role, device, and reviewer tools." />
 
-          {errorMessage ? (
+          {dashboardError || errorMessage ? (
             <Card className="gap-2 border-destructive/30 bg-destructive/5">
               <Text className="text-sm font-sans-bold text-destructive">
-                {errorMessage}
+                {dashboardError || errorMessage}
               </Text>
             </Card>
           ) : null}

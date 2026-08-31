@@ -38,9 +38,8 @@ const StartupScreen = () => (
 );
 
 const RootNavigator = () => {
-  const { status } = useAuthSession();
+  const { isSignedIn, status } = useAuthSession();
   const isInitializing = status === "initializing";
-  const isAuthenticated = status === "authenticated";
 
   if (isInitializing) return <StartupScreen />;
 
@@ -49,7 +48,7 @@ const RootNavigator = () => {
       <Stack.Screen name="index" />
       <Stack.Screen name="public-results" />
       <Stack.Screen name="(auth)" />
-      <Stack.Protected guard={isAuthenticated}>
+      <Stack.Protected guard={isSignedIn}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="kyc-submission" />
         <Stack.Screen name="incident-report" />

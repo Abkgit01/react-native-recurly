@@ -9,9 +9,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 const tabBar = components.tabBar;
 
 const TabLayout = () => {
-  const { isLoaded, isSignedIn, restoredDashboard } = useAuthSession();
+  const { dashboard, isLoaded, isSignedIn } = useAuthSession();
   const insets = useSafeAreaInsets();
-  const canOpenCapture = Boolean(restoredDashboard?.kycApproved);
+  const canOpenCapture = Boolean(dashboard?.kycApproved);
 
   if (!isLoaded) return null;
   if (!isSignedIn) return <Redirect href="/(auth)/sign-in" />;
