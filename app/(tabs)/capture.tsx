@@ -9,10 +9,12 @@ import {
   StatusBadge,
 } from "@/components/ElectionUI";
 import {
+  analyzeEc8aImage,
   getIncidentStart,
   getOpenResultCaptureOptions,
   startResultCaptureSession,
   submitIncidentReport,
+  type AnalyzeEc8aResult,
   type IncidentStartResponse,
   submitResultCapture,
   type KycImageAsset,
@@ -90,8 +92,10 @@ export default function Capture() {
   const [queuedRef, setQueuedRef] = useState("");
   const [serverReceipt, setServerReceipt] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [ec8aOcrResult, setEc8aOcrResult] = useState<AnalyzeEc8aResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
+  const [isAnalyzingEc8a, setIsAnalyzingEc8a] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [idempotencyKey, setIdempotencyKey] = useState(createIdempotencyKey);
   const [returnStep, setReturnStep] = useState<CaptureStep>("start");
@@ -276,6 +280,42 @@ export default function Capture() {
 
     if (!result.canceled && result.assets[0]) {
       setEc8aImage(toCaptureAsset(result.assets[0], "ec8a-result.jpg"));
+      setEc8aOcrResult(null);
+    }
+  };
+
+  const analyzeAndContinue = async () => {
+    if (!token || !selectedElection || !ec8aImage) return;
+
+    setIsAnalyzingEc8a(true);
+    setErrorMessage("");
+    try {
+      const result = await analyzeEc8aImage(
+        token,
+        selectedElection.electionId,
+        ec8aImage,
+      );
+      setEc8aOcrResult(result);
+      setScores((current) => ({
+        ...current,
+        ...Object.fromEntries(
+          result.scores
+            .filter(
+              (score) =>
+                (score.status === "Matched" || score.status === "PartyNotFound") &&
+                score.ocrScore !== null &&
+                score.ocrScore !== undefined,
+            )
+            .map((score) => [score.electionPartyId, String(score.ocrScore)]),
+        ),
+      }));
+      setStep("entry");
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "EC8A scores could not be read.",
+      );
+    } finally {
+      setIsAnalyzingEc8a(false);
     }
   };
 
@@ -595,9 +635,9 @@ export default function Capture() {
                     onPress={captureEc8a}
                   />
                   <SecondaryButton
-                    label="Use Photo"
-                    disabled={!ec8aImage}
-                    onPress={() => setStep("entry")}
+                    label={isAnalyzingEc8a ? "Reading..." : "Use Photo"}
+                    disabled={!ec8aImage || isAnalyzingEc8a}
+                    onPress={analyzeAndContinue}
                   />
                 </View>
               </View>
@@ -608,6 +648,32 @@ export default function Capture() {
           {step === "entry" ? (
             <Card className="gap-4">
               <Text className="text-xl font-sans-bold text-primary">Result Entry</Text>
+              {ec8aOcrResult ? (
+                <View className="gap-3 rounded-xl border border-border bg-background p-3">
+                  <View className="flex-row items-center justify-between gap-3">
+                    <Text className="text-sm font-sans-bold text-primary">
+                      EC8A OCR
+                    </Text>
+                    <StatusBadge
+                      status={ec8aOcrResult.passed ? "clean" : "under-review"}
+                      label={ec8aOcrResult.passed ? "Read" : "Review"}
+                    />
+                  </View>
+                  {ec8aOcrResult.issues.map((issue) => (
+                    <Text key={issue} className="text-xs font-sans-semibold text-warning">
+                      {issue}
+                    </Text>
+                  ))}
+                  {ec8aOcrResult.unmatchedRows.length ? (
+                    <Text className="text-xs font-sans-semibold text-muted-foreground">
+                      Unknown OCR party rows were ignored:{" "}
+                      {ec8aOcrResult.unmatchedRows
+                        .map((row) => row.partyCode)
+                        .join(", ")}
+                    </Text>
+                  ) : null}
+                </View>
+              ) : null}
               {ec8aImage ? (
                 <Image source={{ uri: ec8aImage.uri }} className="h-28 w-full rounded-xl" resizeMode="cover" />
               ) : null}

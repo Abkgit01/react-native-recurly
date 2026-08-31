@@ -209,10 +209,40 @@ export type ResultCaptureElectionOption = {
 
 export type ResultCapturePartyScore = {
   electionPartyId: number;
+  partyId?: number;
+  candidateId?: number | null;
   partyAcronym?: string | null;
   partyName?: string | null;
   ballotPosition: number;
   score?: number | null;
+};
+
+export type AnalyzeEc8aScore = {
+  electionPartyId: number;
+  partyId: number;
+  candidateId?: number | null;
+  partyCode: string;
+  partyName: string;
+  ocrScore?: number | null;
+  confidence: number;
+  status: "Matched" | "LowConfidence" | "ScoreUnreadable" | "PartyNotFound" | string;
+};
+
+export type AnalyzeEc8aUnmatchedRow = {
+  partyCode: string;
+  score?: number | null;
+  confidence: number;
+  rawText: string;
+};
+
+export type AnalyzeEc8aResult = {
+  passed: boolean;
+  confidence: number;
+  provider: string;
+  requiresReview: boolean;
+  scores: AnalyzeEc8aScore[];
+  unmatchedRows: AnalyzeEc8aUnmatchedRow[];
+  issues: string[];
 };
 
 export type OpenResultCaptureOptionsResponse = {
@@ -480,6 +510,25 @@ export const startResultCaptureSession = (
     payload,
     token,
   );
+
+export const analyzeEc8aImage = (
+  token: string,
+  electionId: number,
+  ec8aImage: KycImageAsset,
+) => {
+  const formData = new FormData();
+  formData.append("ElectionId", String(electionId));
+  appendImage(formData, "Ec8aImage", ec8aImage);
+
+  return apiRequest<AnalyzeEc8aResult>(
+    "/api/result-submissions/analyze-ec8a",
+    {
+      method: "POST",
+      token,
+      body: formData,
+    },
+  );
+};
 
 export const getMyResultSubmissions = (token: string) =>
   apiRequest<ResultSubmissionListItem[]>("/api/result-submissions/my", {
