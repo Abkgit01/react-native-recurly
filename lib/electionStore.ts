@@ -24,6 +24,9 @@ export type QueuedResultSubmission = {
   partyScores: ResultCapturePartyScore[];
   registeredVoters: number | null;
   accreditedVoters: number | null;
+  ballotPapersIssued: number | null;
+  unusedBallotPapers: number | null;
+  spoiledBallotPapers: number | null;
   validVotes: number | null;
   rejectedVotes: number | null;
   totalVotesCast: number | null;

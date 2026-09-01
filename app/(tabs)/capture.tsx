@@ -28,6 +28,7 @@ import { useAuthSession } from "@/lib/authSession";
 import { formatDate, formatDateTime } from "@/lib/utils";
 import * as Application from "expo-application";
 import * as ImagePicker from "expo-image-picker";
+import * as Location from "expo-location";
 import { styled } from "nativewind";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, Image, Pressable, ScrollView, Text, View } from "react-native";
@@ -35,6 +36,13 @@ import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 
 const SafeAreaView = styled(RNSafeAreaView);
 type CaptureStep = "package" | "start" | "camera" | "entry" | "review" | "queued" | "incident";
+
+type LocationEvidence = {
+  latitude: number;
+  longitude: number;
+  accuracyMeters: number | null;
+  capturedAtUtc: string;
+};
 
 const incidentTypes = [
   { value: 1, label: "Violence" },
@@ -75,6 +83,35 @@ const toCaptureAsset = (
   mimeType: asset.mimeType ?? "image/jpeg",
 });
 
+const getCurrentLocationEvidence = async (): Promise<LocationEvidence> => {
+  const servicesEnabled = await Location.hasServicesEnabledAsync();
+  if (!servicesEnabled) {
+    throw new Error("Location services are disabled. Enable location before capture.");
+  }
+
+  const permission = await Location.requestForegroundPermissionsAsync();
+  if (!permission.granted) {
+    throw new Error("Location permission is required for capture and incident evidence.");
+  }
+
+  const location = await Location.getCurrentPositionAsync({
+    accuracy: Location.Accuracy.High,
+  });
+
+  return {
+    latitude: location.coords.latitude,
+    longitude: location.coords.longitude,
+    accuracyMeters: location.coords.accuracy,
+    capturedAtUtc: new Date(location.timestamp).toISOString(),
+  };
+};
+
+const extractedValue = <T,>(field?: { value?: T | null; status?: string } | null) => {
+  if (!field || field.value === null || field.value === undefined) return null;
+  if (field.status && ["Unreadable", "ScoreUnreadable"].includes(field.status)) return null;
+  return field.value;
+};
+
 export default function Capture() {
   const { token } = useAuthSession();
   const [step, setStep] = useState<CaptureStep>("package");
@@ -85,6 +122,9 @@ export default function Capture() {
   const [scores, setScores] = useState<Record<number, string>>({});
   const [registeredVoters, setRegisteredVoters] = useState("");
   const [accreditedVoters, setAccreditedVoters] = useState("");
+  const [ballotPapersIssued, setBallotPapersIssued] = useState("");
+  const [unusedBallotPapers, setUnusedBallotPapers] = useState("");
+  const [spoiledBallotPapers, setSpoiledBallotPapers] = useState("");
   const [validVotes, setValidVotes] = useState("");
   const [rejectedVotes, setRejectedVotes] = useState("");
   const [serialNumber, setSerialNumber] = useState("");
@@ -109,6 +149,8 @@ export default function Capture() {
   const [incidentNumber, setIncidentNumber] = useState("");
   const [isIncidentLoading, setIsIncidentLoading] = useState(false);
   const [isIncidentSubmitting, setIsIncidentSubmitting] = useState(false);
+  const [captureLocation, setCaptureLocation] = useState<LocationEvidence | null>(null);
+  const [incidentLocation, setIncidentLocation] = useState<LocationEvidence | null>(null);
 
   const selectedElection = useMemo(
     () =>
@@ -132,26 +174,50 @@ export default function Capture() {
   );
   const partyTotal = partyScores.reduce((sum, party) => sum + (party.score ?? 0), 0);
   const totalVotesCast =
-    (Number(validVotes || 0) || 0) + (Number(rejectedVotes || 0) || 0);
+    (Number(spoiledBallotPapers || 0) || 0) +
+    (Number(validVotes || 0) || 0) +
+    (Number(rejectedVotes || 0) || 0);
   const validationIssues = useMemo(() => {
     const issues: string[] = [];
     const registered = toNullableNumber(registeredVoters);
     const accredited = toNullableNumber(accreditedVoters);
+    const issued = toNullableNumber(ballotPapersIssued);
+    const unused = toNullableNumber(unusedBallotPapers);
+    const spoiled = toNullableNumber(spoiledBallotPapers);
     const valid = toNullableNumber(validVotes);
     const rejected = toNullableNumber(rejectedVotes);
-    const cast = valid !== null || rejected !== null ? totalVotesCast : null;
+    const cast =
+      valid !== null || rejected !== null || spoiled !== null
+        ? totalVotesCast
+        : null;
 
     if (valid !== null && valid !== partyTotal) {
       issues.push(`Total valid votes must equal party-score total (${partyTotal}).`);
     }
+    if (issued !== null && unused !== null && cast !== null && issued !== unused + cast) {
+      issues.push("Ballot papers issued must equal unused ballot papers plus total used ballot papers.");
+    }
     if (cast !== null && accredited !== null && cast > accredited) {
-      issues.push("Total votes cast cannot exceed accredited voters.");
+      issues.push("Total number of used ballot papers cannot exceed accredited voters.");
+    }
+    if (issued !== null && cast !== null && cast > issued) {
+      issues.push("Total number of used ballot papers cannot exceed ballot papers issued.");
     }
     if (registered !== null && accredited !== null && accredited > registered) {
       issues.push("Accredited voters cannot exceed registered voters.");
     }
     return issues;
-  }, [accreditedVoters, partyTotal, registeredVoters, rejectedVotes, totalVotesCast, validVotes]);
+  }, [
+    accreditedVoters,
+    ballotPapersIssued,
+    partyTotal,
+    registeredVoters,
+    rejectedVotes,
+    spoiledBallotPapers,
+    totalVotesCast,
+    unusedBallotPapers,
+    validVotes,
+  ]);
 
   const canReview =
     Boolean(ec8aImage && parties.length && parties.every((party) => scores[party.electionPartyId] !== undefined)) &&
@@ -243,9 +309,14 @@ export default function Capture() {
     setIsStarting(true);
     setErrorMessage("");
     try {
+      const location = await getCurrentLocationEvidence();
+      setCaptureLocation(location);
       const started = await startResultCaptureSession(token, {
         electionId: selectedElection.electionId,
-        shutterCapturedAtUtc: new Date().toISOString(),
+        latitude: location.latitude,
+        longitude: location.longitude,
+        accuracyMeters: location.accuracyMeters,
+        shutterCapturedAtUtc: location.capturedAtUtc,
         deviceId: Application.applicationId ?? undefined,
         idempotencyKey,
       });
@@ -296,10 +367,28 @@ export default function Capture() {
         ec8aImage,
       );
       setEc8aOcrResult(result);
+      const accounting = result.accounting;
+      const header = result.header;
+      const referenceNumber = extractedValue<string>(header?.referenceNumber);
+      if (referenceNumber) setSerialNumber(referenceNumber);
+      const votersOnRegister = extractedValue<number>(accounting?.numberOfVotersOnRegister);
+      if (votersOnRegister !== null) setRegisteredVoters(String(votersOnRegister));
+      const accredited = extractedValue<number>(accounting?.numberOfAccreditedVoters);
+      if (accredited !== null) setAccreditedVoters(String(accredited));
+      const issued = extractedValue<number>(accounting?.numberOfBallotPapersIssued);
+      if (issued !== null) setBallotPapersIssued(String(issued));
+      const unused = extractedValue<number>(accounting?.numberOfUnusedBallotPapers);
+      if (unused !== null) setUnusedBallotPapers(String(unused));
+      const spoiled = extractedValue<number>(accounting?.numberOfSpoiledBallotPapers);
+      if (spoiled !== null) setSpoiledBallotPapers(String(spoiled));
+      const rejected = extractedValue<number>(accounting?.numberOfRejectedBallots);
+      if (rejected !== null) setRejectedVotes(String(rejected));
+      const totalValid = extractedValue<number>(accounting?.numberOfTotalValidVotes);
+      if (totalValid !== null) setValidVotes(String(totalValid));
       setScores((current) => ({
         ...current,
         ...Object.fromEntries(
-          result.scores
+          (result.candidateScores ?? result.scores)
             .filter(
               (score) =>
                 (score.status === "Matched" || score.status === "PartyNotFound") &&
@@ -401,12 +490,17 @@ export default function Capture() {
     setIsIncidentSubmitting(true);
     setErrorMessage("");
     try {
+      const location = incidentLocation ?? (await getCurrentLocationEvidence());
+      setIncidentLocation(location);
       const result = await submitIncidentReport({
         token,
         electionId: selectedIncidentElection.electionId,
         type: incidentType,
         severity: incidentSeverity,
         description: incidentDescription.trim(),
+        latitude: location.latitude,
+        longitude: location.longitude,
+        locationAccuracyMeters: location.accuracyMeters,
         locationDescription: incidentLocationDescription.trim() || null,
         incidentHappenedAtUtc: new Date().toISOString(),
         confirmationAccepted: incidentConfirmationAccepted,
@@ -435,12 +529,20 @@ export default function Capture() {
       ec8aSerialNumber: serialNumber.trim() || null,
       registeredVoters: toNullableNumber(registeredVoters),
       accreditedVoters: toNullableNumber(accreditedVoters),
+      ballotPapersIssued: toNullableNumber(ballotPapersIssued),
+      unusedBallotPapers: toNullableNumber(unusedBallotPapers),
+      spoiledBallotPapers: toNullableNumber(spoiledBallotPapers),
       totalValidVotes: toNullableNumber(validVotes),
       rejectedVotes: toNullableNumber(rejectedVotes),
       totalVotesCast:
-        validVotes.trim() || rejectedVotes.trim() ? totalVotesCast : null,
+        validVotes.trim() || rejectedVotes.trim() || spoiledBallotPapers.trim()
+          ? totalVotesCast
+          : null,
       note: notes.trim() || null,
-      shutterCapturedAtUtc: new Date().toISOString(),
+      shutterLatitude: captureLocation?.latitude ?? null,
+      shutterLongitude: captureLocation?.longitude ?? null,
+      shutterAccuracyMeters: captureLocation?.accuracyMeters ?? null,
+      shutterCapturedAtUtc: captureLocation?.capturedAtUtc ?? new Date().toISOString(),
       idempotencyKey,
       partyScores,
     };
@@ -466,6 +568,9 @@ export default function Capture() {
           partyScores,
           registeredVoters: payload.registeredVoters,
           accreditedVoters: payload.accreditedVoters,
+          ballotPapersIssued: payload.ballotPapersIssued,
+          unusedBallotPapers: payload.unusedBallotPapers,
+          spoiledBallotPapers: payload.spoiledBallotPapers,
           validVotes: payload.totalValidVotes,
           rejectedVotes: payload.rejectedVotes,
           totalVotesCast: payload.totalVotesCast,
@@ -597,7 +702,22 @@ export default function Capture() {
               <InfoRow label="State" value={options?.stateName || "Not available"} />
               <InfoRow label="LGA" value={options?.localGovernmentAreaName || "Not available"} />
               <InfoRow label="Ward" value={options?.wardName || "Not available"} />
-              <InfoRow label="Location" value="Not captured" />
+              <InfoRow
+                label="Geofence"
+                value={
+                  options?.allowedGeofenceRadiusMeters
+                    ? `${options.allowedGeofenceRadiusMeters}m radius${options.geofenceRequired ? "" : " (advisory)"}`
+                    : "Backend rule unavailable"
+                }
+              />
+              <InfoRow
+                label="Location"
+                value={
+                  captureLocation
+                    ? `Captured (${captureLocation.accuracyMeters ?? "unknown"}m accuracy)`
+                    : "Not captured"
+                }
+              />
               <InfoRow label="Device time" value="Device timestamp will be sent with capture" />
               <StatusBadge
                 status={options?.isEligible ? "approved" : "under-review"}
@@ -616,7 +736,14 @@ export default function Capture() {
             <View className="gap-4">
               <View className="min-h-[520px] overflow-hidden rounded-3xl bg-charcoal p-4">
                 <View className="flex-row justify-between">
-                  <StatusBadge status="pending" label="GPS not captured" />
+                  <StatusBadge
+                    status={session?.isWithinGeofence ? "verified" : "under-review"}
+                    label={
+                      session?.isWithinGeofence
+                        ? "GPS verified"
+                        : session?.message ?? "GPS captured"
+                    }
+                  />
                   <StatusBadge status="saved-locally" label={session?.status || "Issued"} />
                 </View>
                 <View className="mt-10 flex-1 items-center justify-center rounded-2xl border-2 border-white/65">
@@ -672,6 +799,11 @@ export default function Capture() {
                         .join(", ")}
                     </Text>
                   ) : null}
+                  {ec8aOcrResult.qr ? (
+                    <Text className="text-xs font-sans-semibold text-muted-foreground">
+                      QR: {ec8aOcrResult.qr.status}
+                    </Text>
+                  ) : null}
                 </View>
               ) : null}
               {ec8aImage ? (
@@ -691,24 +823,15 @@ export default function Capture() {
                   value={scores[party.electionPartyId] ?? ""}
                 />
               ))}
-              <View className="flex-row gap-3">
-                <View className="flex-1">
-                  <FormField label="Registered" keyboardType="number-pad" value={registeredVoters} onChangeText={(value) => setRegisteredVoters(numberOnly(value))} />
-                </View>
-                <View className="flex-1">
-                  <FormField label="Accredited" keyboardType="number-pad" value={accreditedVoters} onChangeText={(value) => setAccreditedVoters(numberOnly(value))} />
-                </View>
-              </View>
-              <View className="flex-row gap-3">
-                <View className="flex-1">
-                  <FormField label="Valid votes" keyboardType="number-pad" value={validVotes} onChangeText={(value) => setValidVotes(numberOnly(value))} />
-                </View>
-                <View className="flex-1">
-                  <FormField label="Rejected" keyboardType="number-pad" value={rejectedVotes} onChangeText={(value) => setRejectedVotes(numberOnly(value))} />
-                </View>
-              </View>
+              <FormField label="Number of Voters on the Register" keyboardType="number-pad" value={registeredVoters} onChangeText={(value) => setRegisteredVoters(numberOnly(value))} />
+              <FormField label="Number of Accredited Voters" keyboardType="number-pad" value={accreditedVoters} onChangeText={(value) => setAccreditedVoters(numberOnly(value))} />
+              <FormField label="Number of Ballot Papers Issued to the Polling Unit" keyboardType="number-pad" value={ballotPapersIssued} onChangeText={(value) => setBallotPapersIssued(numberOnly(value))} />
+              <FormField label="Number of Unused Ballot Papers" keyboardType="number-pad" value={unusedBallotPapers} onChangeText={(value) => setUnusedBallotPapers(numberOnly(value))} />
+              <FormField label="Number of Spoiled Ballot Papers" keyboardType="number-pad" value={spoiledBallotPapers} onChangeText={(value) => setSpoiledBallotPapers(numberOnly(value))} />
+              <FormField label="Number of Rejected Ballots" keyboardType="number-pad" value={rejectedVotes} onChangeText={(value) => setRejectedVotes(numberOnly(value))} />
+              <FormField label="Number of Total Valid Votes" keyboardType="number-pad" value={validVotes} onChangeText={(value) => setValidVotes(numberOnly(value))} />
               <FormField label="EC8A Serial" value={serialNumber} onChangeText={setSerialNumber} placeholder="Optional" />
-              <InfoRow label="Total votes cast" value={totalVotesCast} />
+              <InfoRow label="Total Number of Used Ballot Papers" value={totalVotesCast} />
               {validationIssues.length ? (
                 <View className="gap-2 rounded-xl border border-warning/30 bg-warning/10 p-3">
                   {validationIssues.map((issue) => (
@@ -741,9 +864,25 @@ export default function Capture() {
               <InfoRow label="Election" value={selectedElection?.electionName || "Not available"} />
               <InfoRow label="Polling Unit" value={session?.pollingUnitName || options?.pollingUnitName || "Not available"} />
               <InfoRow label="Party score total" value={partyTotal} />
-              <InfoRow label="Valid votes" value={validVotes || "Not entered"} />
-              <InfoRow label="Rejected votes" value={rejectedVotes || "Not entered"} />
-              <InfoRow label="Total votes cast" value={totalVotesCast} />
+              <InfoRow label="Number of Voters on the Register" value={registeredVoters || "Not entered"} />
+              <InfoRow label="Number of Accredited Voters" value={accreditedVoters || "Not entered"} />
+              <InfoRow label="Number of Ballot Papers Issued to the Polling Unit" value={ballotPapersIssued || "Not entered"} />
+              <InfoRow label="Number of Unused Ballot Papers" value={unusedBallotPapers || "Not entered"} />
+              <InfoRow label="Number of Spoiled Ballot Papers" value={spoiledBallotPapers || "Not entered"} />
+              <InfoRow label="Number of Rejected Ballots" value={rejectedVotes || "Not entered"} />
+              <InfoRow label="Number of Total Valid Votes" value={validVotes || "Not entered"} />
+              <InfoRow label="Total Number of Used Ballot Papers" value={totalVotesCast} />
+              <InfoRow
+                label="Location"
+                value={
+                  session?.distanceToPollingUnitMeters !== null &&
+                  session?.distanceToPollingUnitMeters !== undefined
+                    ? `${Math.round(session.distanceToPollingUnitMeters)}m from assigned polling unit`
+                    : captureLocation
+                      ? "Captured"
+                      : "Not captured"
+                }
+              />
               <InfoRow label="Timestamp" value={formatDateTime(new Date().toISOString())} />
               <Text className="text-sm font-sans-medium text-muted-foreground">
                 The backend will re-check your identity, KYC approval, assignment, candidate list, totals, and duplicate submission rules.

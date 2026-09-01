@@ -16,6 +16,7 @@ import {
 } from "@/lib/authApi";
 import { Redirect, useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
+import * as Location from "expo-location";
 import { useAuthSession } from "@/lib/authSession";
 import { styled } from "nativewind";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -46,6 +47,36 @@ const getImageName = (uri: string, fallback: string) => {
   return name || fallback;
 };
 
+type LocationEvidence = {
+  latitude: number;
+  longitude: number;
+  accuracyMeters: number | null;
+  capturedAtUtc: string;
+};
+
+const getCurrentLocationEvidence = async (): Promise<LocationEvidence> => {
+  const servicesEnabled = await Location.hasServicesEnabledAsync();
+  if (!servicesEnabled) {
+    throw new Error("Location services are disabled. Enable location before reporting an incident.");
+  }
+
+  const permission = await Location.requestForegroundPermissionsAsync();
+  if (!permission.granted) {
+    throw new Error("Location permission is required for incident evidence.");
+  }
+
+  const location = await Location.getCurrentPositionAsync({
+    accuracy: Location.Accuracy.High,
+  });
+
+  return {
+    latitude: location.coords.latitude,
+    longitude: location.coords.longitude,
+    accuracyMeters: location.coords.accuracy,
+    capturedAtUtc: new Date(location.timestamp).toISOString(),
+  };
+};
+
 export default function IncidentReportScreen() {
   const router = useRouter();
   const { isLoaded, isSignedIn, token } = useAuthSession();
@@ -61,6 +92,7 @@ export default function IncidentReportScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [incidentNumber, setIncidentNumber] = useState("");
+  const [locationEvidence, setLocationEvidence] = useState<LocationEvidence | null>(null);
 
   const selectedElection = useMemo(
     () =>
@@ -182,14 +214,19 @@ export default function IncidentReportScreen() {
     setIsSubmitting(true);
     setErrorMessage("");
     try {
+      const location = locationEvidence ?? (await getCurrentLocationEvidence());
+      setLocationEvidence(location);
       const result = await submitIncidentReport({
         token,
         electionId: selectedElectionId,
         type: incidentType,
         severity,
         description: description.trim(),
+        latitude: location.latitude,
+        longitude: location.longitude,
+        locationAccuracyMeters: location.accuracyMeters,
         locationDescription: locationDescription.trim() || null,
-        incidentHappenedAtUtc: new Date().toISOString(),
+        incidentHappenedAtUtc: location.capturedAtUtc,
         confirmationAccepted,
         attachments: evidence,
       });
@@ -286,6 +323,14 @@ export default function IncidentReportScreen() {
                   value={start.localGovernmentAreaName ?? "Not available"}
                 />
                 <InfoRow label="Ward" value={start.wardName ?? "Not available"} />
+                <InfoRow
+                  label="Location"
+                  value={
+                    locationEvidence
+                      ? `Captured (${locationEvidence.accuracyMeters ?? "unknown"}m accuracy)`
+                      : "Captured on submit"
+                  }
+                />
                 <StatusBadge status="verified" label="Verified Polling Unit" />
               </Card>
 

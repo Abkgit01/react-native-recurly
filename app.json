@@ -67,6 +67,12 @@
           "cameraPermission": "ElectionWatch uses your camera to capture PVC and selfie images for KYC.",
           "microphonePermission": false
         }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "ElectionWatch uses your location when capturing EC8A results and incident evidence for polling-unit verification."
+        }
       ]
     ],
     "experiments": {

@@ -269,12 +269,66 @@ export type AnalyzeEc8aUnmatchedRow = {
   rawText: string;
 };
 
+export type AnalyzeEc8aField<T> = {
+  value?: T | null;
+  confidence: number;
+  status: string;
+  rawText?: string | null;
+};
+
+export type AnalyzeEc8aHeader = {
+  electionTitle: AnalyzeEc8aField<string>;
+  electionType: AnalyzeEc8aField<string>;
+  electionDate: AnalyzeEc8aField<string>;
+  referenceNumber: AnalyzeEc8aField<string>;
+  formType: AnalyzeEc8aField<string>;
+  state: AnalyzeEc8aField<string>;
+  localGovernmentArea: AnalyzeEc8aField<string>;
+  ward: AnalyzeEc8aField<string>;
+  pollingUnit: AnalyzeEc8aField<string>;
+  presidingOfficerName: AnalyzeEc8aField<string>;
+};
+
+export type AnalyzeEc8aCodes = {
+  stateCode: AnalyzeEc8aField<string>;
+  localGovernmentAreaCode: AnalyzeEc8aField<string>;
+  wardCode: AnalyzeEc8aField<string>;
+  pollingUnitCode: AnalyzeEc8aField<string>;
+};
+
+export type AnalyzeEc8aAccounting = {
+  numberOfVotersOnRegister: AnalyzeEc8aField<number>;
+  numberOfAccreditedVoters: AnalyzeEc8aField<number>;
+  numberOfBallotPapersIssued: AnalyzeEc8aField<number>;
+  numberOfUnusedBallotPapers: AnalyzeEc8aField<number>;
+  numberOfSpoiledBallotPapers: AnalyzeEc8aField<number>;
+  numberOfRejectedBallots: AnalyzeEc8aField<number>;
+  numberOfTotalValidVotes: AnalyzeEc8aField<number>;
+  totalNumberOfUsedBallotPapers: AnalyzeEc8aField<number>;
+};
+
+export type AnalyzeEc8aQr = {
+  detected: boolean;
+  payload?: string | null;
+  status: string;
+  confidence: number;
+  matchingSignals: string[];
+  issues: string[];
+};
+
 export type AnalyzeEc8aResult = {
+  documentRecognized?: boolean;
   passed: boolean;
   confidence: number;
+  overallConfidence?: number;
   provider: string;
   requiresReview: boolean;
+  header?: AnalyzeEc8aHeader;
+  codes?: AnalyzeEc8aCodes;
+  accounting?: AnalyzeEc8aAccounting;
+  qr?: AnalyzeEc8aQr;
   scores: AnalyzeEc8aScore[];
+  candidateScores?: AnalyzeEc8aScore[];
   unmatchedRows: AnalyzeEc8aUnmatchedRow[];
   issues: string[];
 };
@@ -289,6 +343,11 @@ export type OpenResultCaptureOptionsResponse = {
   wardName?: string | null;
   localGovernmentAreaName?: string | null;
   stateName?: string | null;
+  pollingUnitLatitude?: number | null;
+  pollingUnitLongitude?: number | null;
+  allowedGeofenceRadiusMeters?: number | null;
+  maximumLocationAccuracyMeters?: number | null;
+  geofenceRequired?: boolean;
   openElections?: ResultCaptureElectionOption[] | null;
   partyScores?: ResultCapturePartyScore[] | null;
 };
@@ -317,6 +376,9 @@ export type ResultCaptureSessionStart = {
   status: string;
   isWithinGeofence: boolean;
   distanceToPollingUnitMeters?: number | null;
+  allowedGeofenceRadiusMeters?: number | null;
+  maximumLocationAccuracyMeters?: number | null;
+  geofenceRequired?: boolean;
   message?: string | null;
 };
 
@@ -330,6 +392,9 @@ export type SubmitResultCaptureRequest = {
   ec8aSerialNumber?: string | null;
   registeredVoters?: number | null;
   accreditedVoters?: number | null;
+  ballotPapersIssued?: number | null;
+  unusedBallotPapers?: number | null;
+  spoiledBallotPapers?: number | null;
   totalValidVotes?: number | null;
   rejectedVotes?: number | null;
   totalVotesCast?: number | null;
@@ -643,6 +708,9 @@ export const submitResultCapture = ({
   ec8aSerialNumber,
   registeredVoters,
   accreditedVoters,
+  ballotPapersIssued,
+  unusedBallotPapers,
+  spoiledBallotPapers,
   totalValidVotes,
   rejectedVotes,
   totalVotesCast,
@@ -666,6 +734,15 @@ export const submitResultCapture = ({
   }
   if (accreditedVoters !== null && accreditedVoters !== undefined) {
     formData.append("AccreditedVoters", String(accreditedVoters));
+  }
+  if (ballotPapersIssued !== null && ballotPapersIssued !== undefined) {
+    formData.append("BallotPapersIssued", String(ballotPapersIssued));
+  }
+  if (unusedBallotPapers !== null && unusedBallotPapers !== undefined) {
+    formData.append("UnusedBallotPapers", String(unusedBallotPapers));
+  }
+  if (spoiledBallotPapers !== null && spoiledBallotPapers !== undefined) {
+    formData.append("SpoiledBallotPapers", String(spoiledBallotPapers));
   }
   if (totalValidVotes !== null && totalValidVotes !== undefined) {
     formData.append("TotalValidVotes", String(totalValidVotes));
@@ -701,7 +778,7 @@ export const submitResultCapture = ({
 
 export const getIncidentStart = (token: string, electionId?: number) =>
   apiRequest<IncidentStartResponse>(
-    `/api/incidents/start${electionId ? `?electionId=${electionId}` : ""}`,
+    `/api/incidents/eligibility${electionId ? `?electionId=${electionId}` : ""}`,
     { token },
   );
 
@@ -744,7 +821,7 @@ export const submitIncidentReport = ({
     appendImage(formData, "Attachments", attachment),
   );
 
-  return apiRequest<SubmitIncidentResponse>("/api/incidents", {
+  return apiRequest<SubmitIncidentResponse>("/api/incidents/submit", {
     method: "POST",
     token,
     body: formData,
